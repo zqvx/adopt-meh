@@ -152,9 +152,10 @@ export function toRidePots(points: number) {
   return points / RIDE_POTION_POINTS;
 }
 
-/** Presets de taxa dos marketplaces usados no cross-trading europeu. */
+/** Presets de taxa dos métodos de recebimento usados no cross-trading na UE. */
 export const FEE_PRESETS = [
-  { id: "direct", label: "Direto · PayPal/MB Way", fee: 8 },
+  { id: "revolut", label: "Revolut (direto)", fee: 0 },
+  { id: "paypal", label: "PayPal (direto)", fee: 5 },
   { id: "g2g", label: "G2G", fee: 10 },
   { id: "eldorado", label: "Eldorado", fee: 12 },
 ] as const;

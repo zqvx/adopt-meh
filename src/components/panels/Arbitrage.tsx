@@ -173,7 +173,7 @@ export function Arbitrage() {
             </div>
             <input
               type="range"
-              min={5}
+              min={0}
               max={15}
               step={1}
               value={feePct}
@@ -182,17 +182,17 @@ export function Arbitrage() {
               aria-label="Taxa do marketplace"
             />
             <span className="mt-1 flex justify-between font-mono text-[10px] text-faint">
-              <span>5%</span>
-              <span>10% padrão</span>
-              <span>15%</span>
+              <span>0% Revolut</span>
+              <span>10% G2G</span>
+              <span>12% Eldorado</span>
             </span>
           </div>
 
           <p className="flex items-start gap-1.5 rounded-md bg-bg-sunken px-3 py-2 text-[11px] text-muted">
             <Landmark className="mt-0.5 size-3.5 shrink-0 text-faint" />
-            Venda na UE: recebe via PayPal ou MB Way em €. O cross-trading fora do
-            jogo viola os Termos do Roblox — usa contas verificadas e nunca pagues
-            primeiro.
+            Venda na UE: recebe via Revolut ou PayPal em € (não há Pix). O
+            cross-trading fora do jogo viola os Termos do Roblox — usa contas
+            verificadas e nunca pagues primeiro.
           </p>
         </div>
 

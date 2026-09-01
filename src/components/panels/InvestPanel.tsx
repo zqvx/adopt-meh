@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PetGlyph } from "@/components/trade/PetGlyph";
+import { SourcesCard } from "./SourcesCard";
 
 type CostUnit = Currency | "RP";
 
@@ -505,6 +506,8 @@ export function InvestPanel() {
           </div>
         </div>
       </div>
+
+      <SourcesCard />
 
       <p className="text-[11px] text-faint">
         Os sinais usam valores de referência comunitários e um feed simulado — não
