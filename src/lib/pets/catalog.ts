@@ -7,6 +7,7 @@ import type {
   Variant,
   VariantValue,
 } from "./types";
+import { getCustomPet, searchCustomPets } from "./custom";
 
 interface Seed {
   id: string;
@@ -1036,6 +1037,152 @@ const SEEDS: Seed[] = [
     frUsd: 0.45,
     glyph: "ocean",
   },
+  // --- Pets populares recentes (valores aproximados de mercado; afinar via
+  // pet personalizado se o scraper não os tiver) ---
+  {
+    id: "sugar-glider",
+    name: "Sugar Glider",
+    aliases: ["sugar glider", "glider", "petauro"],
+    tier: "A",
+    liq: "medium",
+    demand: 4,
+    featured: true,
+    frPts: 32,
+    frUsd: 18,
+    glyph: "mint",
+  },
+  {
+    id: "albatross",
+    name: "Albatross",
+    aliases: ["albatroz", "albatross"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 14,
+    frUsd: 8,
+    glyph: "storm",
+  },
+  {
+    id: "galah",
+    name: "Galah",
+    aliases: ["galah", "catatua"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 10,
+    frUsd: 5.5,
+    glyph: "wine",
+  },
+  {
+    id: "abyssinian-cat",
+    name: "Abyssinian Cat",
+    aliases: ["abyssinian", "gato abissinio"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 12,
+    frUsd: 7,
+    glyph: "sand",
+  },
+  {
+    id: "sandbox-turtle",
+    name: "Sandbox Turtle",
+    aliases: ["sandbox turtle", "tartaruga sandbox"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 9,
+    frUsd: 5,
+    glyph: "forest",
+  },
+  {
+    id: "tweetheart",
+    name: "Tweetheart",
+    aliases: ["tweetheart"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 11,
+    frUsd: 6,
+    glyph: "blood",
+  },
+  {
+    id: "cheerful-otter",
+    name: "Cheerful Otter",
+    aliases: ["cheerful otter", "lontra"],
+    tier: "C",
+    liq: "low",
+    demand: 2,
+    frPts: 4,
+    frUsd: 2.2,
+    glyph: "ocean",
+  },
+  {
+    id: "maneki-neko",
+    name: "Maneki-Neko",
+    aliases: ["maneki neko", "maneki", "gato sorte"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 13,
+    frUsd: 7.5,
+    glyph: "pearl",
+  },
+  {
+    id: "zombie-wolf",
+    name: "Zombie Wolf",
+    aliases: ["zombie wolf", "lobo zombie"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 15,
+    frUsd: 8.5,
+    glyph: "bone",
+  },
+  {
+    id: "vampire-dragon",
+    name: "Vampire Dragon",
+    aliases: ["vampire dragon", "dragao vampiro"],
+    tier: "A",
+    liq: "medium",
+    demand: 4,
+    frPts: 45,
+    frUsd: 26,
+    glyph: "wine",
+  },
+  {
+    id: "undead-elk",
+    name: "Undead Elk",
+    aliases: ["undead elk", "alce undead"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 16,
+    frUsd: 9,
+    glyph: "moss",
+  },
+  {
+    id: "chimera",
+    name: "Chimera",
+    aliases: ["chimera", "quimera"],
+    tier: "A",
+    liq: "medium",
+    demand: 4,
+    frPts: 40,
+    frUsd: 23,
+    glyph: "ember",
+  },
+  {
+    id: "lunar-ox",
+    name: "Lunar Ox",
+    aliases: ["lunar ox", "boi lunar"],
+    tier: "C",
+    liq: "low",
+    demand: 2,
+    frPts: 5,
+    frUsd: 2.8,
+    glyph: "steel",
+  },
   {
     id: "ride-potion",
     name: "Ride Potion",
@@ -1204,7 +1351,7 @@ export const PET_BY_ID: Record<string, Pet> = Object.fromEntries(
 export const FEATURED_PETS = PETS.filter((pet) => pet.featured);
 
 export function getPet(id: string) {
-  return PET_BY_ID[id];
+  return PET_BY_ID[id] ?? getCustomPet(id);
 }
 
 export function searchPets(query: string, limit = 12): Pet[] {
@@ -1218,6 +1365,11 @@ export function searchPets(query: string, limit = 12): Pet[] {
       })
       .slice(0, limit);
   }
+  // Pets personalizados do utilizador contam como resultados de topo.
+  const customHits = searchCustomPets(q, limit).map((pet) => ({
+    pet,
+    score: 90 + (pet.name.toLowerCase() === q ? 10 : 0),
+  }));
   const scored = PETS.map((pet) => {
     const name = pet.name.toLowerCase();
     const aliasHit = pet.aliases.some((alias) => alias.toLowerCase().includes(q));
@@ -1231,9 +1383,11 @@ export function searchPets(query: string, limit = 12): Pet[] {
     if (score > 0 && pet.featured) score += 2;
     return { pet, score };
   })
-    .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score || b.pet.values.fr.points - a.pet.values.fr.points);
-  return scored.slice(0, limit).map((row) => row.pet);
+    .filter((row) => row.score > 0);
+  return [...customHits, ...scored]
+    .sort((a, b) => b.score - a.score || b.pet.values.fr.points - a.pet.values.fr.points)
+    .slice(0, limit)
+    .map((row) => row.pet);
 }
 
 export function variantsFor(pet: Pet): Variant[] {
