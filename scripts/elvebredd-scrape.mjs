@@ -54,6 +54,7 @@ const NAME_TO_ID = {
   "griffin": "griffin",
   "lion": "lion",
   "dalmatian": "dalmatian",
+  "sugar glider": "sugar-glider",
 };
 
 const TARGETS = [

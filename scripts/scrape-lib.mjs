@@ -43,6 +43,7 @@ export const NAME_TO_ID = {
   "dodo": "dodo",
   "griffin": "griffin",
   "shark": "shark",
+  "sugar glider": "sugar-glider",
   "kitsune": "kitsune",
   "octopus": "octopus",
   "frost fury": "frost-fury",

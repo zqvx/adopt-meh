@@ -1040,14 +1040,19 @@ const SEEDS: Seed[] = [
   // --- Pets populares recentes (valores aproximados de mercado; afinar via
   // pet personalizado se o scraper não os tiver) ---
   {
+    // Dados reais set/2026: ElveBredd 13 pts FR; Eldorado FR €9.77-15.10
+    // (260 anúncios ativos, entrega 3-7 min), NFR €33.75, MFR €102.17.
+    // Em valor in-game já anda ao nível da Turtle — deixou de ser B/iliquido.
     id: "sugar-glider",
     name: "Sugar Glider",
     aliases: ["sugar glider", "glider", "petauro", "esquilo voador"],
-    tier: "B",
-    liq: "low",
-    demand: 2,
-    frPts: 14,
-    frUsd: 3.1,
+    tier: "A",
+    liq: "high",
+    demand: 4,
+    frPts: 13,
+    frUsd: 13,
+    nfrMul: 3,
+    mfrMul: 9.5,
     glyph: "mint",
   },
   {
