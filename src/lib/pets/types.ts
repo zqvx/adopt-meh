@@ -97,4 +97,17 @@ export interface TradeVerdict {
   /** Alerta de downgrade: trocas 1 item forte por muitos itens fracos. */
   downgrade: boolean;
   downgradeDetail: string;
+  /** Contra-proposta: pet forte que o outro devia acrescentar/trocar. */
+  counter: CounterSuggestion | null;
+}
+
+export interface CounterSuggestion {
+  petId: string;
+  variant: Variant;
+  /** Porquê esta sugestão. */
+  reason: string;
+  /** Pontos do pet sugerido. */
+  points: number;
+  /** Quantos em falta (geralmente 1). */
+  qty: number;
 }

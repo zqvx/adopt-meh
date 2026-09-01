@@ -26,6 +26,13 @@ export interface Position {
   costUsd: number;
 }
 
+export interface InventoryItem {
+  id: string;
+  petId: string;
+  variant: Variant;
+  qty: number;
+}
+
 interface AppState {
   you: TradeLine[];
   them: TradeLine[];
@@ -33,7 +40,8 @@ interface AppState {
   feePct: number;
   history: HistoryEntry[];
   positions: Position[];
-  tab: "live" | "invest" | "craft" | "trade" | "table" | "arb" | "history";
+  inventory: InventoryItem[];
+  tab: "live" | "invest" | "craft" | "trade" | "inventory" | "table" | "arb" | "history";
   addLine: (side: TradeSide, petId: string, variant: Variant) => void;
   removeLine: (side: TradeSide, id: string) => void;
   setQty: (side: TradeSide, id: string, qty: number) => void;
@@ -51,11 +59,16 @@ interface AppState {
   addPosition: (pos: Omit<Position, "id" | "ts">) => void;
   removePosition: (id: string) => void;
   hydratePositions: (positions: Position[]) => void;
+  addInventory: (petId: string, variant: Variant) => void;
+  setInventoryQty: (id: string, qty: number) => void;
+  removeInventory: (id: string) => void;
+  hydrateInventory: (items: InventoryItem[]) => void;
 }
 
 const HISTORY_KEY = "nexus-trade-history-v1";
 const PREFS_KEY = "nexus-prefs-v2";
 const PORTFOLIO_KEY = "nexus-portfolio-v1";
+const INVENTORY_KEY = "nexus-inventory-v1";
 
 function sideOf(state: AppState, side: TradeSide) {
   return side === "you" ? state.you : state.them;
@@ -134,6 +147,25 @@ export function readPositions(): Position[] {
   }
 }
 
+function persistInventory(items: InventoryItem[]) {
+  try {
+    localStorage.setItem(INVENTORY_KEY, JSON.stringify(items.slice(0, 200)));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readInventory(): InventoryItem[] {
+  try {
+    const raw = localStorage.getItem(INVENTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as InventoryItem[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export const useTradeStore = create<AppState>((set, get) => ({
   you: [],
   them: [],
@@ -141,6 +173,7 @@ export const useTradeStore = create<AppState>((set, get) => ({
   feePct: 10,
   history: [],
   positions: [],
+  inventory: [],
   tab: "live",
   addLine: (side, petId, variant) => {
     const pet = getPet(petId);
@@ -276,4 +309,42 @@ export const useTradeStore = create<AppState>((set, get) => ({
     persistPositions(next);
   },
   hydratePositions: (positions) => set({ positions }),
+  addInventory: (petId, variant) => {
+    const pet = getPet(petId);
+    if (!pet) return;
+    const resolved: Variant = pet.hasVariants ? variant : "regular";
+    set((state) => {
+      const existing = state.inventory.find(
+        (it) => it.petId === petId && it.variant === resolved,
+      );
+      const inventory = existing
+        ? state.inventory.map((it) =>
+            it.id === existing.id ? { ...it, qty: it.qty + 1 } : it,
+          )
+        : [
+            ...state.inventory,
+            { id: uid(), petId, variant: resolved, qty: 1 },
+          ];
+      persistInventory(inventory);
+      return { inventory };
+    });
+  },
+  setInventoryQty: (id, qty) => {
+    const next = Math.max(0, Math.min(999, Math.round(qty)));
+    set((state) => {
+      const inventory = state.inventory
+        .map((it) => (it.id === id ? { ...it, qty: next } : it))
+        .filter((it) => it.qty > 0);
+      persistInventory(inventory);
+      return { inventory };
+    });
+  },
+  removeInventory: (id) => {
+    set((state) => {
+      const inventory = state.inventory.filter((it) => it.id !== id);
+      persistInventory(inventory);
+      return { inventory };
+    });
+  },
+  hydrateInventory: (items) => set({ inventory: items }),
 }));

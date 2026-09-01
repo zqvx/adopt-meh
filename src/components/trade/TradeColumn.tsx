@@ -1,4 +1,4 @@
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Backpack, Minus, Plus, Trash2 } from "lucide-react";
 import { FEATURED_PETS, getPet, variantsFor } from "@/lib/pets/catalog";
 import { lineValue } from "@/lib/pets/engine";
 import { formatMoney, formatPoints, VARIANT_SHORT } from "@/lib/format";
@@ -105,11 +105,15 @@ export function TradeColumn({
   hint: string;
 }) {
   const lines = useTradeStore((s) => (side === "you" ? s.you : s.them));
+  const inventory = useTradeStore((s) => s.inventory);
+  const setTab = useTradeStore((s) => s.setTab);
   const currency = useTradeStore((s) => s.currency);
   const addLine = useTradeStore((s) => s.addLine);
   const clear = useTradeStore((s) => s.clear);
   const points = lines.reduce((sum, line) => sum + lineValue(line).points, 0);
   const usd = lines.reduce((sum, line) => sum + lineValue(line).usd, 0);
+  // No teu lado, mostra os pets do inventário para adicionar num clique.
+  const myInventory = side === "you" ? inventory.slice(0, 12) : [];
 
   return (
     <section className="flex min-h-0 min-w-0 flex-col rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
@@ -138,6 +142,51 @@ export function TradeColumn({
       </header>
 
       <PetSearch side={side} />
+
+      {side === "you" ? (
+        <div className="mt-3 rounded-lg bg-bg-sunken p-2">
+          <div className="mb-1.5 flex items-center justify-between">
+            <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-wide text-faint uppercase">
+              <Backpack className="size-3" />
+              Meu inventário
+            </p>
+            <button
+              type="button"
+              onClick={() => setTab("inventory")}
+              className="text-[11px] text-accent hover:underline"
+            >
+              Gerir →
+            </button>
+          </div>
+          {myInventory.length === 0 ? (
+            <p className="px-1 py-1.5 text-[11px] text-faint">
+              Sem pets registados — abre o separador Inventário para adicionar.
+            </p>
+          ) : (
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {myInventory.map((it) => {
+                const pet = getPet(it.petId);
+                if (!pet) return null;
+                return (
+                  <button
+                    key={it.id}
+                    type="button"
+                    onClick={() => addLine("you", pet.id, it.variant)}
+                    title={`${pet.name} ${VARIANT_SHORT[it.variant]} ×${it.qty}`}
+                    className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-2.5 text-xs text-muted shadow-[var(--shadow-border)] hover:text-fg"
+                  >
+                    <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
+                    <span className="max-w-24 truncate">{pet.name}</span>
+                    <span className="font-mono text-[10px] text-faint">
+                      {VARIANT_SHORT[it.variant]}×{it.qty}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="mt-3 max-w-full min-w-0 overflow-x-auto pb-1">
         <div className="flex w-max gap-1.5">

@@ -1,5 +1,7 @@
-import { getPet } from "./catalog";
+import { getPet, PETS } from "./catalog";
 import type {
+  CounterSuggestion,
+  Pet,
   SideTotals,
   TradeLine,
   TradeVerdict,
@@ -164,6 +166,12 @@ export function evaluateTrade(you: TradeLine[], them: TradeLine[]): TradeVerdict
     }
   }
 
+  const counter = suggestCounter(you, them, {
+    kind, label, hint, pct, deltaPoints, deltaUsd,
+    you: youTot, them: themTot, risk, riskLabel, riskDetail,
+    downgrade, downgradeDetail, counter: null,
+  });
+
   return {
     kind,
     label,
@@ -178,6 +186,77 @@ export function evaluateTrade(you: TradeLine[], them: TradeLine[]): TradeVerdict
     riskDetail,
     downgrade,
     downgradeDetail,
+    counter,
+  };
+}
+
+/**
+ * Sugere um pet FORTE e LÍQUIDO que o outro jogador devia acrescentar (ou
+ * trocar no lugar dos adds fracos) para a troca deixar de ser perda/downgrade.
+ *
+ * Regras:
+ *  - Se há downgrade mas os pontos estão justos, pede um pet forte como add
+ *    (pequeno) para "ancorar" liquidez.
+ *  - Se estás a perder pontos, pede o pet de menor valor que já cobre o buraco
+ *    (para não pedires a mais).
+ *  - Nunca sugere pets que o outro já está a dar nem trash/low liquidity.
+ */
+export function suggestCounter(
+  you: TradeLine[],
+  them: TradeLine[],
+  verdict: TradeVerdict,
+): CounterSuggestion | null {
+  const deficit = verdict.you.points - verdict.them.points; // >0 = faltam pontos deles
+  const needLiquity = verdict.downgrade;
+  if (deficit <= 0 && !needLiquity) return null;
+
+  const themIds = new Set(them.map((l) => l.petId));
+
+  // Candidatos: pets fortes (liq. alta, procura >=4), não trash, que ele não dê.
+  const candidates = PETS.filter(
+    (p) =>
+      p.liquidity === "high" &&
+      p.demand >= 4 &&
+      !themIds.has(p.id) &&
+      p.hasVariants,
+  ).map((p) => ({ pet: p, points: p.values.fr.points, usd: p.values.fr.usd }));
+
+  if (candidates.length === 0) return null;
+
+  let pick: { pet: Pet; points: number } | null = null;
+
+  if (deficit > 0) {
+    // Procura o pet mais barato cujo valor cubra o buraco (com 10% de folga).
+    const target = deficit * 1.1;
+    const covering = candidates
+      .filter((c) => c.points >= target * 0.8)
+      .sort((a, b) => a.points - b.points);
+    pick = covering[0] ?? candidates.sort((a, b) => b.points - a.points)[0];
+  } else {
+    // Downgrade sem perda de pontos: pede um add forte pequeno (tier A/B líquido)
+    // para ancorar — escolhe o menor pet forte que não destoe do valor.
+    const small = candidates
+      .filter((c) => c.points <= verdict.them.points * 0.35)
+      .sort((a, b) => b.points - a.points);
+    pick = small[0] ?? candidates.sort((a, b) => a.points - b.points)[0];
+  }
+
+  if (!pick) return null;
+  const variant: Variant = "fr";
+  const reason = needLiquity
+    ? deficit > 0
+      ? `Pede ${pick.pet.name} FR como add: cobre os ${Math.round(
+          deficit,
+        )} pts em falta e dá-te um pet que voltas a vender depressa.`
+      : `Os pontos estão equilibrados, mas recebes lixo. Pede ${pick.pet.name} FR como add forte ou troca um dos pets fracos por ele.`
+    : `Faltam ~${Math.round(deficit)} pts do teu lado. Pede ${pick.pet.name} FR para fechar justo.`;
+
+  return {
+    petId: pick.pet.id,
+    variant,
+    reason,
+    points: pick.pet.values.fr.points,
+    qty: 1,
   };
 }
 

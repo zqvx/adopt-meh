@@ -1,15 +1,18 @@
 import {
   ArrowLeftRight,
   BookmarkPlus,
+  Handshake,
   ShieldAlert,
   ShieldCheck,
   TrendingDown,
 } from "lucide-react";
 import { evaluateTrade, toRidePots } from "@/lib/pets/engine";
-import { formatMoney, formatPct, formatPoints } from "@/lib/format";
+import { getPet } from "@/lib/pets/catalog";
+import { formatMoney, formatPct, formatPoints, VARIANT_SHORT } from "@/lib/format";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PetGlyph } from "./PetGlyph";
 
 const KIND_CLASS = {
   empty: "text-muted",
@@ -35,7 +38,9 @@ export function ResultMeter() {
   const currency = useTradeStore((s) => s.currency);
   const swap = useTradeStore((s) => s.swap);
   const saveHistory = useTradeStore((s) => s.saveHistory);
+  const addLine = useTradeStore((s) => s.addLine);
   const verdict = evaluateTrade(you, them);
+  const counterPet = verdict.counter ? getPet(verdict.counter.petId) : null;
   const clamped = Math.max(-0.5, Math.min(0.5, verdict.pct));
   const marker = 50 + clamped * 100;
 
@@ -196,6 +201,28 @@ export function ResultMeter() {
               ⚠ Downgrade · armadilha de liquidez
             </p>
             <p className="text-xs text-muted">{verdict.downgradeDetail}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {verdict.counter && counterPet ? (
+        <div className="mt-3 flex items-start gap-3 rounded-lg bg-surface-2 px-3 py-3 shadow-[var(--shadow-border)]">
+          <Handshake className="mt-0.5 size-4 shrink-0 text-accent" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-accent">
+              Contra-proposta sugerida
+            </p>
+            <p className="text-xs text-muted">{verdict.counter.reason}</p>
+            <button
+              type="button"
+              onClick={() =>
+                addLine("them", counterPet.id, verdict.counter!.variant)
+              }
+              className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90"
+            >
+              <PetGlyph id={counterPet.id} glyph={counterPet.glyph} size="sm" />
+              {counterPet.name} {VARIANT_SHORT[verdict.counter.variant]} +{formatPoints(verdict.counter.points)} pts
+            </button>
           </div>
         </div>
       ) : null}

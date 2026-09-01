@@ -1,4 +1,5 @@
 import {
+  Backpack,
   Calculator,
   FlaskConical,
   History,
@@ -14,6 +15,7 @@ import { marketOverrides, useMarketStore } from "@/lib/market-data";
 import type { Currency } from "@/lib/pets/types";
 import {
   readHistory,
+  readInventory,
   readPositions,
   readPrefs,
   useTradeStore,
@@ -27,12 +29,14 @@ import { TierTable } from "@/components/panels/TierTable";
 import { LiveBoard } from "@/components/panels/LiveBoard";
 import { InvestPanel } from "@/components/panels/InvestPanel";
 import { CraftPanel } from "@/components/panels/CraftPanel";
+import { InventoryPanel } from "@/components/panels/InventoryPanel";
 
 const TABS = [
   { id: "live", label: "Ao Vivo", icon: Radio },
   { id: "invest", label: "Investir", icon: TrendingUp },
   { id: "craft", label: "Criação", icon: FlaskConical },
   { id: "trade", label: "Troca", icon: Scale },
+  { id: "inventory", label: "Inventário", icon: Backpack },
   { id: "table", label: "Tabela", icon: Table2 },
   { id: "arb", label: "Margem", icon: Calculator },
   { id: "history", label: "Histórico", icon: History },
@@ -70,6 +74,7 @@ export function AppShell() {
   const clear = useTradeStore((s) => s.clear);
   const hydrateHistory = useTradeStore((s) => s.hydrateHistory);
   const hydratePositions = useTradeStore((s) => s.hydratePositions);
+  const hydrateInventory = useTradeStore((s) => s.hydrateInventory);
   const setFeePct = useTradeStore((s) => s.setFeePct);
   const liveStarted = useLiveStore((s) => s.started);
   const startLive = useLiveStore((s) => s.start);
@@ -95,11 +100,12 @@ export function AppShell() {
     if (typeof prefs?.feePct === "number") setFeePct(prefs.feePct);
     hydrateHistory(readHistory());
     hydratePositions(readPositions());
+    hydrateInventory(readInventory());
     const snapshot = useTradeStore.getState();
     if (snapshot.you.length === 0 && snapshot.them.length === 0) {
       loadExample();
     }
-  }, [hydrateHistory, hydratePositions, loadExample, setCurrency, setFeePct]);
+  }, [hydrateHistory, hydratePositions, hydrateInventory, loadExample, setCurrency, setFeePct]);
 
   useEffect(() => {
     if (!liveStarted) startLive();
@@ -215,6 +221,7 @@ export function AppShell() {
         {tab === "invest" ? <InvestPanel /> : null}
         {tab === "craft" ? <CraftPanel /> : null}
         {tab === "trade" ? <TradeBoard /> : null}
+        {tab === "inventory" ? <InventoryPanel /> : null}
         {tab === "table" ? <TierTable /> : null}
         {tab === "arb" ? <Arbitrage /> : null}
         {tab === "history" ? <HistoryPanel /> : null}
