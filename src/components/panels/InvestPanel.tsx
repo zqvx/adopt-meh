@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { PetGlyph } from "@/components/trade/PetGlyph";
 import { SourcesCard } from "./SourcesCard";
 import { NetWorthChart } from "./NetWorthChart";
+import { BubbleRiskCard } from "./BubbleRiskCard";
 
 type CostUnit = Currency | "RP";
 
@@ -449,6 +450,8 @@ export function InvestPanel() {
       </div>
 
       <NetWorthChart />
+
+      <BubbleRiskCard />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="flex flex-col gap-3">
