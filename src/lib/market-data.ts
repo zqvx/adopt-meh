@@ -34,12 +34,25 @@ interface MarketState {
 }
 
 const DATA_URL = "/data/values.json";
-const HYPE_URL = "/data/hype.json";
+const LIVE_URL = "/api/market/live";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()) as T;
+}
+
+/** Preços frescos via servidor local (que tem internet); cai no JSON estático. */
+async function fetchMarket(): Promise<MarketData> {
+  try {
+    const live = await fetchJson<MarketData>(LIVE_URL);
+    if (live && typeof live.pets === "object" && Object.keys(live.pets).length > 0) {
+      return live;
+    }
+    throw new Error("live vazio");
+  } catch {
+    return fetchJson<MarketData>(DATA_URL);
+  }
 }
 
 export const useMarketStore = create<MarketState>((set, get) => ({
@@ -56,7 +69,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       // O hype é opcional — se faltar, a app usa a procura do catálogo.
       let hype: HypeData | null = null;
       try {
-        hype = await fetchJson<HypeData>(HYPE_URL);
+        hype = await fetchJson<HypeData>("/data/hype.json");
       } catch {
         hype = null;
       }

@@ -1,5 +1,6 @@
-import { readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -142,9 +143,69 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+/**
+ * Endpoint de preços em tempo real: quando a app corre no PC do utilizador
+ * (que tem internet), o servidor de desenvolvimento vai buscar os preços aos
+ * sites de referência e devolve JSON — sem bloqueio de CORS. Cacheia 10 min.
+ * Se a rede falhar (ex.: preview da Arena), a app cai no public/data.
+ */
+function liveMarketPlugin(): Plugin {
+  let cache: { at: number; json: unknown } | null = null;
+  let inFlight: Promise<unknown> | null = null;
+  const TTL = 10 * 60 * 1000;
+  return {
+    name: "app-builder:live-market",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const pathOnly = (req.url ?? "").split("?", 1)[0] ?? "";
+        if (pathOnly !== "/api/market/live") {
+          next();
+          return;
+        }
+        try {
+          const now = Date.now();
+          if (cache && now - cache.at < TTL) {
+            res.setHeader("content-type", "application/json; charset=utf-8");
+            res.end(JSON.stringify(cache.json));
+            return;
+          }
+          if (!inFlight) {
+            inFlight = (async () => {
+              const lib = await import(
+                pathToFileURL(join(server.config.root, "scripts/scrape-lib.mjs")).href
+              );
+              // Base local como fallback de pets não encontrados.
+              let base: Record<string, unknown> = {};
+              try {
+                base = JSON.parse(
+                  readFileSync(
+                    join(server.config.root, "public/data/values.json"),
+                    "utf8",
+                  ),
+                ).pets;
+              } catch {
+                /* sem ficheiro */
+              }
+              return await lib.fetchMarketData(base);
+            })();
+          }
+          const json = await inFlight;
+          inFlight = null;
+          cache = { at: now, json };
+          res.setHeader("content-type", "application/json; charset=utf-8");
+          res.end(JSON.stringify(json));
+        } catch (err) {
+          res.statusCode = 502;
+          res.setHeader("content-type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ error: String(err) }));
+        }
+      });
+    },
+  };
+}
+
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
-// The dev server starts once `src/router.tsx` and `src/routes/` exist — see
-// AGENTS.md § "First scaffold".
 export default defineConfig(({ command, isPreview }) => ({
   server: {
     host: "0.0.0.0",
@@ -160,6 +221,7 @@ export default defineConfig(({ command, isPreview }) => ({
   resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
+    liveMarketPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
     // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.
