@@ -179,10 +179,7 @@ function liveMarketPlugin(): Plugin {
               let base: Record<string, unknown> = {};
               try {
                 base = JSON.parse(
-                  readFileSync(
-                    join(server.config.root, "public/data/values.json"),
-                    "utf8",
-                  ),
+                  readFileSync(join(server.config.root, "public/data/values.json"), "utf8"),
                 ).pets;
               } catch {
                 /* sem ficheiro */
@@ -199,6 +196,66 @@ function liveMarketPlugin(): Plugin {
           res.statusCode = 502;
           res.setHeader("content-type", "application/json; charset=utf-8");
           res.end(JSON.stringify({ error: String(err) }));
+        }
+      });
+    },
+  };
+}
+
+/**
+ * Endpoint de verificação por pet: vai à Game.Guide buscar os valores atuais
+ * de UM pet (todas as variantes) para o utilizador conferir na app. Cacheia
+ * por nome 10 min; se a rede falhar devolve ok:false e a UI mostra as
+ * ligações de verificação manual na mesma.
+ */
+function verifyPetPlugin(): Plugin {
+  const cache = new Map<string, { at: number; json: unknown }>();
+  const inFlight = new Map<string, Promise<unknown>>();
+  const TTL = 10 * 60 * 1000;
+  return {
+    name: "app-builder:verify-pet",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const pathOnly = (req.url ?? "").split("?", 1)[0] ?? "";
+        if (pathOnly !== "/api/market/verify") {
+          next();
+          return;
+        }
+        const name = new URL(req.url ?? "/", "http://local").searchParams.get("name")?.trim() ?? "";
+        const send = (json: unknown) => {
+          res.setHeader("content-type", "application/json; charset=utf-8");
+          res.end(JSON.stringify(json));
+        };
+        if (!name || name.length > 60) {
+          send({ ok: false, error: "nome em falta" });
+          return;
+        }
+        const hit = cache.get(name.toLowerCase());
+        if (hit && Date.now() - hit.at < TTL) {
+          send(hit.json);
+          return;
+        }
+        try {
+          if (!inFlight.has(name.toLowerCase())) {
+            inFlight.set(
+              name.toLowerCase(),
+              (async () => {
+                const lib = await import(
+                  pathToFileURL(join(server.config.root, "scripts/scrape-lib.mjs")).href
+                );
+                return await lib.verifyPetOnWeb(name);
+              })(),
+            );
+          }
+          const json = await inFlight.get(name.toLowerCase());
+          inFlight.delete(name.toLowerCase());
+          cache.set(name.toLowerCase(), { at: Date.now(), json });
+          send({ ok: true, result: json });
+        } catch (err) {
+          inFlight.delete(name.toLowerCase());
+          // Sem internet ou página inexistente: a UI degrada para ligações.
+          send({ ok: false, error: String(err instanceof Error ? err.message : err) });
         }
       });
     },
@@ -222,6 +279,7 @@ export default defineConfig(({ command, isPreview }) => ({
   plugins: [
     pgliteBootstrapPlugin(),
     liveMarketPlugin(),
+    verifyPetPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
     // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.
