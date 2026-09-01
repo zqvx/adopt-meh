@@ -12,6 +12,8 @@ import { useEffect, useState } from "react";
 import { FX } from "@/lib/format";
 import { useLiveStore } from "@/lib/live-store";
 import { marketOverrides, useMarketStore } from "@/lib/market-data";
+import { recordNetWorth } from "@/lib/net-worth";
+import { lineValue } from "@/lib/pets/engine";
 import type { Currency } from "@/lib/pets/types";
 import {
   readHistory,
@@ -24,9 +26,11 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TradeBoard } from "@/components/trade/TradeBoard";
 import { Arbitrage } from "@/components/panels/Arbitrage";
+import { ArbMatrix } from "@/components/panels/ArbMatrix";
 import { HistoryPanel } from "@/components/panels/HistoryPanel";
 import { TierTable } from "@/components/panels/TierTable";
 import { LiveBoard } from "@/components/panels/LiveBoard";
+import { SniperWatcher } from "@/components/panels/Sniper";
 import { InvestPanel } from "@/components/panels/InvestPanel";
 import { CraftPanel } from "@/components/panels/CraftPanel";
 import { InventoryPanel } from "@/components/panels/InventoryPanel";
@@ -82,6 +86,24 @@ export function AppShell() {
   const marketData = useMarketStore((s) => s.data);
   const marketStatus = useMarketStore((s) => s.status);
   const setOverrides = useLiveStore((s) => s.setOverrides);
+
+  const inventory = useTradeStore((s) => s.inventory);
+
+  // Regista o património do dia (para o gráfico do separador Investir).
+  useEffect(() => {
+    const totalUsd = inventory.reduce(
+      (sum, it) =>
+        sum +
+        lineValue({
+          id: it.id,
+          petId: it.petId,
+          variant: it.variant,
+          qty: it.qty,
+        }).usd,
+      0,
+    );
+    if (totalUsd > 0) recordNetWorth(totalUsd);
+  }, [inventory]);
 
   useEffect(() => {
     loadMarket();
@@ -223,8 +245,15 @@ export function AppShell() {
         {tab === "trade" ? <TradeBoard /> : null}
         {tab === "inventory" ? <InventoryPanel /> : null}
         {tab === "table" ? <TierTable /> : null}
-        {tab === "arb" ? <Arbitrage /> : null}
+        {tab === "arb" ? (
+          <div className="flex flex-col gap-4">
+            <ArbMatrix />
+            <Arbitrage />
+          </div>
+        ) : null}
         {tab === "history" ? <HistoryPanel /> : null}
+
+        <SniperWatcher />
 
         <p className="pb-2 text-center text-[11px] text-faint">
           Valores independentes, para decisão rápida. Confirma sempre a procura

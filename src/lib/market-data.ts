@@ -6,6 +6,8 @@ export interface MarketPetValue {
   lowUsd?: number;
   highUsd?: number;
   source?: string;
+  /** Preço por plataforma (chave = id da fonte) para arbitragem. */
+  src?: Record<string, number>;
 }
 
 export interface MarketData {

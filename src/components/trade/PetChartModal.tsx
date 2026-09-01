@@ -17,6 +17,7 @@ import { realPriceSeries, useMarketStore } from "@/lib/market-data";
 import { useTradeStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { PetGlyph } from "./PetGlyph";
+import { RouteSuggester } from "./RouteSuggester";
 
 interface Props {
   petId: string;
@@ -193,6 +194,10 @@ export function PetChartModal({ petId, variant, fairUsd, nowUsd, onClose }: Prop
             ? `Linha a tracejado = valor de referência. Dados REAIS acumulados pelas recolhas automáticas (${data.length} pontos).`
             : "Linha a tracejado = valor de referência. Série simulada — o histórico real começa a acumular com as recolhas automáticas (a cada 6h)."}
         </p>
+
+        <div className="mt-3">
+          <RouteSuggester petId={petId} variant={variant} />
+        </div>
 
         <div className="mt-3 flex gap-2">
           <Button

@@ -1,14 +1,107 @@
-import { Backpack, FlaskConical, Minus, Plus, Search, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Backpack,
+  FlaskConical,
+  Minus,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { getPet, searchPets, variantsFor } from "@/lib/pets/catalog";
-import { lineValue } from "@/lib/pets/engine";
+import { lineValue, liquidityScore } from "@/lib/pets/engine";
 import { readyFromInventory } from "@/lib/pets/craft";
 import { formatMoney, formatPoints, VARIANT_SHORT } from "@/lib/format";
 import type { InventoryItem } from "@/lib/store";
 import { useTradeStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PetGlyph } from "@/components/trade/PetGlyph";
+
+function DeadWeight({ onTrade }: { onTrade: () => void }) {
+  const inventory = useTradeStore((s) => s.inventory);
+  const currency = useTradeStore((s) => s.currency);
+
+  const dead = useMemo(() => {
+    return inventory
+      .map((it) => {
+        const pet = getPet(it.petId);
+        if (!pet) return null;
+        const score = liquidityScore(pet.liquidity, pet.demand, pet.tier);
+        if (score >= 4.5) return null; // amarelo/vermelho: < 4.5
+        const val = lineValue({
+          id: it.id,
+          petId: it.petId,
+          variant: it.variant,
+          qty: it.qty,
+        });
+        return { it, pet, score, value: val };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.score - b.score || b.value.usd - a.value.usd);
+  }, [inventory]);
+
+  const tiedUsd = dead.reduce((s, d) => s + d.value.usd, 0);
+
+  if (inventory.length === 0) return null;
+
+  if (dead.length === 0) {
+    return (
+      <div className="rounded-xl border border-accent/30 bg-accent-dim/30 p-3">
+        <p className="flex items-center gap-2 text-sm font-medium text-accent">
+          <Backpack className="size-4" /> Inventário saudável
+        </p>
+        <p className="mt-1 text-[12px] text-muted">
+          Nenhum peso morto: todos os teus pets têm liquidez alta (nota ≥ 4.5) e
+          vendem depressa.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-warn/40 bg-warn-dim/20 p-3 sm:p-4">
+      <div className="mb-1 flex items-center gap-2">
+        <AlertTriangle className="size-5 text-warn" />
+        <h3 className="text-sm font-semibold">Peso Morto — livra-te disto</h3>
+      </div>
+      <p className="text-[12px] text-muted">
+        Tens <strong className="text-warn">{dead.length}</strong> pet(s) que valem
+        dinheiro mas quase não se vendem (liquidez &lt; 4.5). Capital preso:{" "}
+        <strong className="text-fg">{formatMoney(tiedUsd, currency)}</strong>.
+        Usa-os como <em>adds</em> para fechar upgrades — despachas a iliquidez
+        para o outro jogador e ficas com um pet de topo que gira depressa.
+      </p>
+      <ul className="mt-3 flex flex-col gap-2">
+        {dead.map(({ it, pet, score, value }) => (
+          <li
+            key={it.id}
+            className="flex items-center gap-2.5 rounded-md bg-surface-2 p-2"
+          >
+            <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{pet.name}</p>
+              <p className="font-mono text-[11px] text-muted">
+                {formatMoney(value.usd, currency)} · liquidez{" "}
+                <span className={cn(score < 2.5 ? "text-loss" : "text-warn")}>
+                  {score.toFixed(1)}/10
+                </span>
+              </p>
+            </div>
+            <Badge tone={score < 2.5 ? "loss" : "warn"}>
+              {score < 2.5 ? "Não vende" : "Lento"}
+            </Badge>
+          </li>
+        ))}
+      </ul>
+      <Button variant="secondary" size="sm" className="mt-3" onClick={onTrade}>
+        Usar como adds numa troca →
+      </Button>
+    </div>
+  );
+}
 
 function CraftBadge({ petId }: { petId: string }) {
   const inventory = useTradeStore((s) => s.inventory);
@@ -107,10 +200,23 @@ function InventoryRow({ item }: { item: InventoryItem }) {
 export function InventoryPanel() {
   const inventory = useTradeStore((s) => s.inventory);
   const addInventory = useTradeStore((s) => s.addInventory);
+  const addLine = useTradeStore((s) => s.addLine);
+  const setTab = useTradeStore((s) => s.setTab);
   const currency = useTradeStore((s) => s.currency);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const matches = useMemo(() => searchPets(query, 8), [query]);
+
+  // Leva os pets ilíquidos (peso morto) para o nosso lado da troca, para
+  // serem usados como adds num upgrade.
+  function deadToTrade() {
+    for (const it of inventory) {
+      const pet = getPet(it.petId);
+      if (!pet) continue;
+      const score = liquidityScore(pet.liquidity, pet.demand, pet.tier);
+      if (score < 4.5) addLine("you", it.petId, it.variant);
+    }
+  }
 
   const totalPts = inventory.reduce(
     (sum, it) =>
@@ -125,6 +231,12 @@ export function InventoryPanel() {
 
   return (
     <section className="flex flex-col gap-4">
+      <DeadWeight
+        onTrade={() => {
+          deadToTrade();
+          setTab("trade");
+        }}
+      />
       <div className="rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
         <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">
           Os teus pets

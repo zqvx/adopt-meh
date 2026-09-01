@@ -154,9 +154,16 @@ export async function fetchMarketData(existingPets = {}, existingMeta = {}) {
 
   for (const [id, row] of Object.entries(eldo)) {
     pets[id] = { ...pets[id], ...row, ...(pets[id]?.frUsd ? { frUsd: pets[id].frUsd } : {}) };
+    // Guarda o preço por plataforma para a matriz de arbitragem.
+    if (typeof row.frUsd === "number") {
+      pets[id].src = { ...(pets[id].src ?? {}), eldorado: row.frUsd };
+    }
   }
   for (const [id, row] of Object.entries(blox)) {
     pets[id] = { ...pets[id], frUsd: row.frUsd, source: "bloxultra" };
+    if (typeof row.frUsd === "number") {
+      pets[id].src = { ...(pets[id].src ?? {}), bloxultra: row.frUsd };
+    }
   }
 
   const live = errors.length < 2;

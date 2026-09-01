@@ -91,6 +91,14 @@ O separador **Ao Vivo** mostra um selo:
 Cada fonte é independente (`Promise.allSettled`): se BloxUltra cair mas Eldorado
 responder, a app fica com o que conseguiu e nunca avaria.
 
+## Mais plataformas = melhor arbitragem
+
+A matriz de arbitragem (separador **Margem**) compara preços entre plataformas.
+Já cruza BloxUltra, Eldorado e as faixas low/high. Para adicionar Gameflip ou
+Starpets, basta o scraper escrever `src: { <fonte>: <preço> }` em cada pet de
+`public/data/values.json` (ver `scripts/scrape-lib.mjs` — o merge já guarda o
+campo `src` por fonte). A matriz deteta automaticamente as fontes novas.
+
 ## Se um site mudar / bloquear
 
 - O scraper **nunca apaga** dados: se uma fonte falha (Cloudflare, estrutura

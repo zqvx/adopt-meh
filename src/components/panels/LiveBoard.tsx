@@ -2,10 +2,11 @@ import {
   Activity,
   ArrowDownRight,
   ArrowUpRight,
+  Bell,
   Plus,
   Radio,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { getPet } from "@/lib/pets/catalog";
 import { useLiveStore } from "@/lib/live-store";
 import {
@@ -23,6 +24,7 @@ import { PetGlyph } from "@/components/trade/PetGlyph";
 import { PetChartModal } from "@/components/trade/PetChartModal";
 import type { Pet } from "@/lib/pets/types";
 import { EggAlert } from "./EggAlert";
+import { SniperCard } from "./Sniper";
 
 function Sparkline({ data, signal }: { data: number[]; signal: "buy" | "hold" | "sell" }) {
   const w = 92;
@@ -64,7 +66,15 @@ function Sparkline({ data, signal }: { data: number[]; signal: "buy" | "hold" | 
   );
 }
 
-function OpportunityRow({ sig, onChart }: { sig: QuoteSignal; onChart: (pet: Pet) => void }) {
+function OpportunityRow({
+  sig,
+  onChart,
+  onSnipe,
+}: {
+  sig: QuoteSignal;
+  onChart: (pet: Pet) => void;
+  onSnipe: () => void;
+}) {
   const currency = useTradeStore((s) => s.currency);
   const addLine = useTradeStore((s) => s.addLine);
   const setTab = useTradeStore((s) => s.setTab);
@@ -213,6 +223,15 @@ function OpportunityRow({ sig, onChart }: { sig: QuoteSignal; onChart: (pet: Pet
           variant="ghost"
           size="sm"
           className="size-8 p-0"
+          title="Armar alarme de preço (sniper)"
+          onClick={onSnipe}
+        >
+          <Bell className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="size-8 p-0"
           title="Adicionar à compra (lado dele na troca)"
           onClick={() => {
             addLine("them", pet.id, sig.quote.variant);
@@ -288,6 +307,13 @@ export function LiveBoard() {
   })();
   const [paused, setPaused] = useState(false);
   const [chart, setChart] = useState<QuoteSignal | null>(null);
+  const [snipe, setSnipe] = useState<{ petId: string; variant: import("@/lib/pets/types").Variant } | null>(null);
+  const snipeRef = useRef<HTMLDivElement>(null);
+
+  function armSniper(sig: QuoteSignal) {
+    setSnipe({ petId: sig.quote.petId, variant: sig.quote.variant });
+    setTimeout(() => snipeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  }
 
   const signals = useMemo(() => {
     return quotes
@@ -416,6 +442,7 @@ export function LiveBoard() {
             key={sig.quote.key}
             sig={sig}
             onChart={() => setChart(sig)}
+            onSnipe={() => armSniper(sig)}
           />
         ))}
       </div>
@@ -429,6 +456,10 @@ export function LiveBoard() {
           onClose={() => setChart(null)}
         />
       ) : null}
+
+      <div ref={snipeRef} className="scroll-mt-24">
+        <SniperCard quickPet={snipe} />
+      </div>
 
       <p className="text-[11px] text-faint">
         Simulação para treino de decisão (não são cotações reais da Uplift Games nem
