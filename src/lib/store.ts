@@ -41,7 +41,17 @@ interface AppState {
   history: HistoryEntry[];
   positions: Position[];
   inventory: InventoryItem[];
-  tab: "live" | "invest" | "craft" | "trade" | "inventory" | "table" | "arb" | "history";
+  tab:
+    | "mission"
+    | "p2p"
+    | "live"
+    | "invest"
+    | "craft"
+    | "trade"
+    | "inventory"
+    | "table"
+    | "arb"
+    | "history";
   addLine: (side: TradeSide, petId: string, variant: Variant) => void;
   removeLine: (side: TradeSide, id: string) => void;
   setQty: (side: TradeSide, id: string, qty: number) => void;
@@ -179,7 +189,8 @@ export const useTradeStore = create<AppState>((set, get) => ({
   history: [],
   positions: [],
   inventory: [],
-  tab: "live",
+  // O briefing matinal é o ecrã de arranque: diz logo o que fazer hoje.
+  tab: "mission",
   addLine: (side, petId, variant) => {
     const pet = getPet(petId);
     if (!pet) return;

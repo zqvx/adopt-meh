@@ -1,2 +1,16 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Lançadores do Windows: TÊM de ficar com CRLF, senão o cmd.exe não consegue
+# ler os blocos if(...) / labels e a janela fecha-se sem dizer nada.
+#
+# `-text` (em vez de `text eol=crlf`) guarda os bytes tal e qual no próprio
+# objeto do Git. Assim o CRLF sobrevive a TUDO: clone, ZIP do GitHub e até o
+# download do ficheiro "Raw" — que serve o objeto em cru e, com `eol=crlf`,
+# ainda vinha em LF (partido).
+*.bat -text
+*.cmd -text
+*.ps1 -text
+
+# Scripts de shell: sempre LF, mesmo em Windows.
+*.sh text eol=lf

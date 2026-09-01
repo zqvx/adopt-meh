@@ -20,3 +20,6 @@ scrape.log
 # sistema operativo
 .DS_Store
 Thumbs.db
+
+# log do lançador
+iniciar-log.txt
