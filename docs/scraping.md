@@ -36,8 +36,11 @@ Atualizar automaticamente (Linux/macOS, `crontab -e`), de 6 em 6 horas:
 
 ## Atualização automática na nuvem (sem PC ligado)
 
-O workflow `.github/workflows/scrape.yml` corre o scraper de 6 em 6 horas nos
-servidores do GitHub (grátis):
+O workflow vem pronto em `scripts/setup/scrape.yml.txt`. Para o ativar (uma
+vez, 30 segundos): no GitHub cria `.github/workflows/scrape.yml` (Add file →
+Create new file), cola o conteúdo do `.txt` e faz commit.
+
+A partir daí corre de 6 em 6 horas nos servidores do GitHub (grátis):
 
 1. Faz checkout do repo e corre `node scripts/scrape-values.mjs`
    (e o `discord-hype.mjs` se existirem secrets `DISCORD_TOKEN` /

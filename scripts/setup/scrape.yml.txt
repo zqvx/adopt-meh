@@ -1,0 +1,73 @@
+# ============================================================================
+# ATIVAÇÃO (30 segundos, uma vez só):
+#   1. Neste repositório no GitHub, cria a pasta: .github/workflows/
+#      (botão "Add file → Create new file" e escreve
+#       .github/workflows/scrape.yml como nome — as pastas criam-se sozinhas)
+#   2. Copia o conteúdo deste ficheiro para lá (sem o ".txt" no nome final).
+#   3. Faz "Commit changes".
+#
+# A partir daí o scraper corre de 6 em 6 horas na nuvem do GitHub (grátis)
+# e cada atualização de preços faz deploy automático no Vercel/Netlify.
+# Também podes disparar à mão no separador Actions → "Run workflow".
+# ============================================================================
+
+name: Scrape de preços
+
+# Corre sozinho de 6 em 6 horas (hora UTC) e também dá para disparar à mão
+# no separador "Actions" do GitHub. Guarda os preços em public/data/values.json
+# e faz commit — o Vercel/Netlify faz deploy automático a seguir.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/scrape-lib.mjs"
+      - "scripts/scrape-values.mjs"
+      - "scripts/discord-hype.mjs"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Scraping de valores (BloxUltra + Eldorado)
+        run: node scripts/scrape-values.mjs
+
+      # Opcional: define os secrets DISCORD_TOKEN e DISCORD_CHANNELS no repo
+      # (Settings → Secrets and variables → Actions) para medir hype real.
+      # Sem secrets o passo não faz nada e a app usa a semente hype.json.
+      - name: Hype do Discord (opcional)
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          DISCORD_CHANNELS: ${{ secrets.DISCORD_CHANNELS }}
+        run: node scripts/discord-hype.mjs || echo "hype ignorado (sem token ou falhou)"
+
+      - name: Guardar alterações
+        run: |
+          git config user.name "scraper-bot"
+          git config user.email "scraper-bot@users.noreply.github.com"
+          git add public/data/values.json public/data/hype.json
+          if git diff --cached --quiet; then
+            echo "Sem preços novos desta vez."
+          else
+            git commit -m "chore(preços): scraping automático $(date -u +%Y-%m-%d_%H:%M_UTC)"
+            git push
+            echo "Preços atualizados e enviados — o deploy segue automaticamente."
+          fi

@@ -7,8 +7,11 @@ A app está pronta. Falta pô-la no ar e mostrá-la às pessoas certas.
 1. Cria conta em <https://vercel.com> com o GitHub.
 2. **Add New → Project** → importa o repositório.
 3. Deploy sem configuração nenhuma (o Vercel deteta o build).
-4. O scraper automático (`.github/workflows/scrape.yml`) já corre de 6 em 6
-   horas e cada atualização de preços faz deploy sozinha.
+4. Ativa o scraper automático (uma vez, 30 s): no GitHub cria
+   `.github/workflows/scrape.yml` e cola o conteúdo de
+   `scripts/setup/scrape.yml.txt` (o cabeçalho do ficheiro explica). A partir
+   daí os preços são recolhidos de 6 em 6 horas na nuvem e cada recolha faz
+   deploy sozinha — sem precisares do PC ligado.
 5. (Opcional) No Vercel, muda o domínio para algo tipo
    `adopt-me-terminal.vercel.app` ou um domínio próprio barato.
 
