@@ -1,9 +1,22 @@
-import { ArrowLeftRight, BookmarkPlus, ShieldAlert, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeftRight,
+  BookmarkPlus,
+  CheckCircle2,
+  Download,
+  Handshake,
+  ShieldAlert,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import { evaluateTrade, toRidePots } from "@/lib/pets/engine";
-import { formatMoney, formatPct, formatPoints } from "@/lib/format";
+import { getPet } from "@/lib/pets/catalog";
+import { downloadReceipt, generateReceipt } from "@/lib/receipt";
+import { formatMoney, formatPct, formatPoints, VARIANT_SHORT } from "@/lib/format";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PetGlyph } from "./PetGlyph";
 
 const KIND_CLASS = {
   empty: "text-muted",
@@ -29,7 +42,22 @@ export function ResultMeter() {
   const currency = useTradeStore((s) => s.currency);
   const swap = useTradeStore((s) => s.swap);
   const saveHistory = useTradeStore((s) => s.saveHistory);
+  const addLine = useTradeStore((s) => s.addLine);
+  const completeTrade = useTradeStore((s) => s.completeTrade);
+
+  const handleReceipt = () => {
+    if (verdict.kind === "empty") return;
+    saveHistory();
+    const { url } = generateReceipt(you, them);
+    downloadReceipt(url, `adopt-me-trade-${Date.now()}.png`);
+  };
+  const handleComplete = () => {
+    if (verdict.kind === "empty") return;
+    saveHistory();
+    completeTrade();
+  };
   const verdict = evaluateTrade(you, them);
+  const counterPet = verdict.counter ? getPet(verdict.counter.petId) : null;
   const clamped = Math.max(-0.5, Math.min(0.5, verdict.pct));
   const marker = 50 + clamped * 100;
 
@@ -95,10 +123,12 @@ export function ResultMeter() {
 
         <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-bg-sunken px-4 py-3 sm:grid-cols-4 lg:w-[28rem] lg:shrink-0">
           <div>
-            <dt className="text-[11px] text-faint">Delta pts</dt>
+            <dt className="text-[11px] text-faint">
+              Δ pts <span className="text-accent">· decide W/F/L</span>
+            </dt>
             <dd
               className={cn(
-                "font-mono text-sm tabular-nums",
+                "font-mono text-base font-semibold tabular-nums",
                 verdict.deltaPoints > 0
                   ? "text-accent"
                   : verdict.deltaPoints < 0
@@ -111,19 +141,15 @@ export function ResultMeter() {
             </dd>
           </div>
           <div>
-            <dt className="text-[11px] text-faint">Delta {currency}</dt>
-            <dd
-              className={cn(
-                "font-mono text-sm tabular-nums",
-                verdict.deltaUsd > 0
-                  ? "text-accent"
-                  : verdict.deltaUsd < 0
-                    ? "text-loss"
-                    : "text-fg",
-              )}
+            <dt
+              className="text-[11px] text-faint"
+              title="Valor aproximado de revenda a dinheiro (marketplaces). É um mercado SEPARADO dos pontos — só informativo, NÃO decide o W/F/L. Vem do scraping quando disponível, senão é uma estimativa."
             >
-              {verdict.deltaUsd > 0 ? "+" : ""}
-              {formatMoney(verdict.deltaUsd, currency)}
+              Δ dinheiro (aprox.)
+            </dt>
+            <dd className="font-mono text-sm tabular-nums text-muted">
+              {verdict.deltaUsd > 0 ? "+" : verdict.deltaUsd < 0 ? "−" : ""}
+              {formatMoney(Math.abs(verdict.deltaUsd), currency)}
             </dd>
           </div>
           <div>
@@ -141,6 +167,14 @@ export function ResultMeter() {
           </div>
         </dl>
       </div>
+
+      <p className="mt-2 font-mono text-[10px] leading-relaxed text-faint">
+        O veredito W/F/L usa os <strong className="text-muted">pontos</strong>{" "}
+        (valor de troca dentro do jogo). O valor em{" "}
+        <strong className="text-muted">dinheiro</strong> é só uma referência de
+        revenda (mercado separado, sujeito a oferta/procura e taxas) — não torna
+        um bom trade em mau.
+      </p>
 
       <div
         className={cn(
@@ -181,6 +215,65 @@ export function ResultMeter() {
           <p className="text-xs text-muted">{verdict.riskDetail}</p>
         </div>
       </div>
+
+      {verdict.downgrade ? (
+        <div className="mt-3 flex items-start gap-3 rounded-lg bg-warn-dim px-3 py-3">
+          <TrendingDown className="mt-0.5 size-4 shrink-0 text-warn" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-warn">
+              ⚠ Downgrade · armadilha de liquidez
+            </p>
+            <p className="text-xs text-muted">{verdict.downgradeDetail}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {verdict.counter && counterPet ? (
+        <div className="mt-3 flex items-start gap-3 rounded-lg bg-surface-2 px-3 py-3 shadow-[var(--shadow-border)]">
+          <Handshake className="mt-0.5 size-4 shrink-0 text-accent" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-accent">
+              Contra-proposta sugerida
+            </p>
+            <p className="text-xs text-muted">{verdict.counter.reason}</p>
+            <button
+              type="button"
+              onClick={() =>
+                addLine("them", counterPet.id, verdict.counter!.variant)
+              }
+              className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90"
+            >
+              <PetGlyph id={counterPet.id} glyph={counterPet.glyph} size="sm" />
+              {counterPet.name} {VARIANT_SHORT[verdict.counter.variant]} +{formatPoints(verdict.counter.points)} pts
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {verdict.upgrade ? (
+        <div className="mt-3 flex items-start gap-3 rounded-lg bg-surface-2 px-3 py-3 shadow-[var(--shadow-border)]">
+          <TrendingUp className="mt-0.5 size-4 shrink-0 text-warn" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-warn">
+              Upgrade · precisas de overpay
+            </p>
+            <p className="text-xs text-muted">{verdict.overpayDetail}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {verdict.kind !== "empty" ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="primary" size="sm" onClick={handleComplete}>
+            <CheckCircle2 className="size-3.5" />
+            Trade concluída (atualiza inventário)
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleReceipt}>
+            <Download className="size-3.5" />
+            Gerar recibo W/F/L (PNG)
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

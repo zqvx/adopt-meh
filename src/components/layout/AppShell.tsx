@@ -1,28 +1,52 @@
 import {
+  Backpack,
   Calculator,
+  FlaskConical,
   History,
+  Radio,
   Scale,
   Table2,
+  TrendingUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { FX } from "@/lib/format";
+import { useLiveStore } from "@/lib/live-store";
+import { marketOverrides, useMarketStore } from "@/lib/market-data";
+import { recordNetWorth } from "@/lib/net-worth";
+import { lineValue } from "@/lib/pets/engine";
 import type { Currency } from "@/lib/pets/types";
-import { readHistory, readPrefs, useTradeStore } from "@/lib/store";
+import {
+  readHistory,
+  readInventory,
+  readPositions,
+  readPrefs,
+  useTradeStore,
+} from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TradeBoard } from "@/components/trade/TradeBoard";
 import { Arbitrage } from "@/components/panels/Arbitrage";
+import { ArbMatrix } from "@/components/panels/ArbMatrix";
 import { HistoryPanel } from "@/components/panels/HistoryPanel";
 import { TierTable } from "@/components/panels/TierTable";
+import { LiveBoard } from "@/components/panels/LiveBoard";
+import { SniperWatcher } from "@/components/panels/Sniper";
+import { InvestPanel } from "@/components/panels/InvestPanel";
+import { CraftPanel } from "@/components/panels/CraftPanel";
+import { InventoryPanel } from "@/components/panels/InventoryPanel";
 
 const TABS = [
+  { id: "live", label: "Ao Vivo", icon: Radio },
+  { id: "invest", label: "Investir", icon: TrendingUp },
+  { id: "craft", label: "Criação", icon: FlaskConical },
   { id: "trade", label: "Troca", icon: Scale },
+  { id: "inventory", label: "Inventário", icon: Backpack },
   { id: "table", label: "Tabela", icon: Table2 },
   { id: "arb", label: "Margem", icon: Calculator },
   { id: "history", label: "Histórico", icon: History },
 ] as const;
 
-const CURRENCIES: Currency[] = ["USD", "BRL", "EUR"];
+const CURRENCIES: Currency[] = ["EUR", "USD", "BRL"];
 
 function Clock() {
   const [now, setNow] = useState<Date | null>(null);
@@ -53,18 +77,61 @@ export function AppShell() {
   const loadExample = useTradeStore((s) => s.loadExample);
   const clear = useTradeStore((s) => s.clear);
   const hydrateHistory = useTradeStore((s) => s.hydrateHistory);
+  const hydratePositions = useTradeStore((s) => s.hydratePositions);
+  const hydrateInventory = useTradeStore((s) => s.hydrateInventory);
   const setFeePct = useTradeStore((s) => s.setFeePct);
+  const liveStarted = useLiveStore((s) => s.started);
+  const startLive = useLiveStore((s) => s.start);
+  const loadMarket = useMarketStore((s) => s.load);
+  const marketData = useMarketStore((s) => s.data);
+  const marketStatus = useMarketStore((s) => s.status);
+  const setOverrides = useLiveStore((s) => s.setOverrides);
+
+  const inventory = useTradeStore((s) => s.inventory);
+
+  // Regista o património do dia (para o gráfico do separador Investir).
+  useEffect(() => {
+    const totalUsd = inventory.reduce(
+      (sum, it) =>
+        sum +
+        lineValue({
+          id: it.id,
+          petId: it.petId,
+          variant: it.variant,
+          qty: it.qty,
+        }).usd,
+      0,
+    );
+    if (totalUsd > 0) recordNetWorth(totalUsd);
+  }, [inventory]);
+
+  useEffect(() => {
+    loadMarket();
+    // Reconsulta o values.json a cada 30 min (o scraper pode atualizá-lo).
+    const id = window.setInterval(loadMarket, 30 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [loadMarket]);
+
+  useEffect(() => {
+    if (marketData) setOverrides(marketOverrides(marketData));
+  }, [marketData, setOverrides]);
 
   useEffect(() => {
     const prefs = readPrefs();
     if (prefs?.currency) setCurrency(prefs.currency);
     if (typeof prefs?.feePct === "number") setFeePct(prefs.feePct);
     hydrateHistory(readHistory());
+    hydratePositions(readPositions());
+    hydrateInventory(readInventory());
     const snapshot = useTradeStore.getState();
     if (snapshot.you.length === 0 && snapshot.them.length === 0) {
       loadExample();
     }
-  }, [hydrateHistory, loadExample, setCurrency, setFeePct]);
+  }, [hydrateHistory, hydratePositions, hydrateInventory, loadExample, setCurrency, setFeePct]);
+
+  useEffect(() => {
+    if (!liveStarted) startLive();
+  }, [liveStarted, startLive]);
 
   return (
     <div className="bg-grid min-h-dvh overflow-x-hidden pb-24 lg:pb-8">
@@ -77,7 +144,7 @@ export function AppShell() {
             <div className="min-w-0">
               <p className="text-sm font-semibold tracking-tight">NEXUS</p>
               <p className="truncate text-[11px] text-muted">
-                Terminal de liquidez · Adopt Me
+                Terminal de trading · Adopt Me · UE
               </p>
             </div>
           </div>
@@ -129,10 +196,41 @@ export function AppShell() {
       <main className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="min-w-0 font-mono text-[11px] text-faint">
-            Câmbio ref. · 1 USD = {FX.BRL.toFixed(2)} BRL · {FX.EUR.toFixed(2)} EUR
+            Mercado UE · câmbio ref. 1 € = {(1 / FX.EUR).toFixed(2)} USD · R$
+            {(FX.BRL / FX.EUR).toFixed(2)} · taxas 8–12%
           </p>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={loadExample}>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] sm:flex",
+                marketStatus === "ok"
+                  ? "bg-accent-dim text-accent"
+                  : "bg-surface-2 text-muted",
+              )}
+              title="Fonte dos valores em dinheiro (scraping de sites de referência)"
+            >
+              <Radio
+                className={cn("size-3", marketStatus === "ok" && "animate-pulse")}
+              />
+              {marketStatus === "ok"
+                ? `Valores reais · ${
+                    marketData?.meta?.scrapedAt
+                      ? new Date(marketData.meta.scrapedAt).toLocaleDateString(
+                          "pt-PT",
+                          { day: "2-digit", month: "2-digit" },
+                        )
+                      : "—"
+                  }`
+                : "Valores de referência"}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                loadExample();
+                setTab("trade");
+              }}
+            >
               Carregar exemplo
             </Button>
             <Button variant="ghost" size="sm" onClick={() => clear("all")}>
@@ -141,10 +239,21 @@ export function AppShell() {
           </div>
         </div>
 
+        {tab === "live" ? <LiveBoard /> : null}
+        {tab === "invest" ? <InvestPanel /> : null}
+        {tab === "craft" ? <CraftPanel /> : null}
         {tab === "trade" ? <TradeBoard /> : null}
+        {tab === "inventory" ? <InventoryPanel /> : null}
         {tab === "table" ? <TierTable /> : null}
-        {tab === "arb" ? <Arbitrage /> : null}
+        {tab === "arb" ? (
+          <div className="flex flex-col gap-4">
+            <ArbMatrix />
+            <Arbitrage />
+          </div>
+        ) : null}
         {tab === "history" ? <HistoryPanel /> : null}
+
+        <SniperWatcher />
 
         <p className="pb-2 text-center text-[11px] text-faint">
           Valores independentes, para decisão rápida. Confirma sempre a procura

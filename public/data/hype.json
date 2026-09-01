@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "updatedAt": "2026-09-01T00:00:00Z",
+    "source": "seed (gerar com scripts/discord-hype.mjs)",
+    "note": "Score de procura/hype 0-100 por pet, a partir de menções em Discord/trades. Pode ser atualizado pelo bot de Discord."
+  },
+  "hype": {
+    "african-wild-dog": 88,
+    "balloon-unicorn": 82,
+    "giant-panda": 78,
+    "bat-dragon": 74,
+    "shadow-dragon": 95,
+    "frost-dragon": 90,
+    "giraffe": 71,
+    "owl": 80,
+    "crow": 68,
+    "parrot": 66,
+    "evil-unicorn": 72,
+    "arctic-reindeer": 55,
+    "turtle": 58,
+    "kangaroo": 52,
+    "frost-fury": 64,
+    "vampire-dragon": 61,
+    "lavender-dragon": 57,
+    "dragon": 48,
+    "unicorn": 44
+  },
+  "mentions": {}
+}

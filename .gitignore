@@ -1,0 +1,22 @@
+# dependências
+node_modules/
+
+# artefactos de build
+.vercel/output/
+.vercel/.cache/
+dist/
+out/
+build/
+
+# logs
+*.log
+scrape.log
+
+# ambiente
+.env
+.env.local
+.env.*.local
+
+# sistema operativo
+.DS_Store
+Thumbs.db

@@ -1,5 +1,7 @@
+import { Landmark, ReceiptText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PETS, searchPets, variantsFor } from "@/lib/pets/catalog";
+import { FEE_PRESETS, RIDE_POTION_USD } from "@/lib/pets/engine";
 import {
   CURRENCY_PREFIX,
   FX,
@@ -13,8 +15,16 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { PetGlyph } from "@/components/trade/PetGlyph";
 
-function toUsd(amount: number, currency: Currency) {
-  return amount / FX[currency];
+type CostUnit = Currency | "RP";
+
+const UNIT_PREFIX: Record<CostUnit, string> = {
+  ...CURRENCY_PREFIX,
+  RP: "",
+};
+
+function toUsd(amount: number, unit: CostUnit) {
+  if (unit === "RP") return amount * RIDE_POTION_USD;
+  return amount / FX[unit];
 }
 
 export function Arbitrage() {
@@ -26,16 +36,17 @@ export function Arbitrage() {
     () => PETS.find((p) => p.id === "shadow-dragon") ?? PETS[0],
   );
   const [variant, setVariant] = useState<Variant>("fr");
-  const [cost, setCost] = useState("180");
-  const [costCurrency, setCostCurrency] = useState<Currency>("USD");
+  const [cost, setCost] = useState("170");
+  const [costUnit, setCostUnit] = useState<CostUnit>("EUR");
 
   const matches = useMemo(() => searchPets(query, 6), [query]);
   const value = picked.values[picked.hasVariants ? variant : "regular"];
   const costNum = Number.parseFloat(cost.replace(",", ".")) || 0;
-  const costUsd = toUsd(costNum, costCurrency);
+  const costUsd = toUsd(costNum, costUnit);
   const fee = feePct / 100;
   const gross = value.usd;
   const net = gross * (1 - fee);
+  const feeUsd = gross * fee;
   const grossMargin = gross - costUsd;
   const netMargin = net - costUsd;
   const roi = costUsd > 0 ? netMargin / costUsd : 0;
@@ -120,16 +131,15 @@ export function Arbitrage() {
             <label className="text-xs text-muted">
               Moeda da compra
               <div className="mt-1.5 flex gap-1">
-                {(["USD", "BRL", "EUR"] as Currency[]).map((c) => (
+                {(["EUR", "USD", "BRL", "RP"] as CostUnit[]).map((c) => (
                   <button
                     key={c}
                     type="button"
-                    onClick={() => setCostCurrency(c)}
+                    onClick={() => setCostUnit(c)}
+                    title={c === "RP" ? "Ride Potions" : undefined}
                     className={cn(
                       "h-11 flex-1 rounded-md font-mono text-xs",
-                      costCurrency === c
-                        ? "bg-fg text-bg"
-                        : "bg-surface-2 text-muted",
+                      costUnit === c ? "bg-fg text-bg" : "bg-surface-2 text-muted",
                     )}
                   >
                     {c}
@@ -139,23 +149,51 @@ export function Arbitrage() {
             </label>
           </div>
 
-          <label className="text-xs text-muted">
-            Taxa do marketplace · {feePct.toFixed(0)}%
+          <div>
+            <p className="flex items-center gap-1.5 text-xs text-muted">
+              <ReceiptText className="size-3.5" />
+              Taxa do marketplace · {feePct.toFixed(0)}%
+            </p>
+            <div className="mt-1.5 grid grid-cols-3 gap-1">
+              {FEE_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => setFeePct(preset.fee)}
+                  className={cn(
+                    "h-9 rounded-md px-1 text-[11px]",
+                    feePct === preset.fee
+                      ? "bg-fg text-bg"
+                      : "bg-surface-2 text-muted hover:text-fg",
+                  )}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
             <input
               type="range"
-              min={5}
+              min={0}
               max={15}
               step={1}
               value={feePct}
               onChange={(e) => setFeePct(Number(e.target.value))}
               className="mt-2 w-full accent-accent"
+              aria-label="Taxa do marketplace"
             />
             <span className="mt-1 flex justify-between font-mono text-[10px] text-faint">
-              <span>5%</span>
-              <span>10% padrão</span>
-              <span>15%</span>
+              <span>0% Revolut</span>
+              <span>10% G2G</span>
+              <span>12% Eldorado</span>
             </span>
-          </label>
+          </div>
+
+          <p className="flex items-start gap-1.5 rounded-md bg-bg-sunken px-3 py-2 text-[11px] text-muted">
+            <Landmark className="mt-0.5 size-3.5 shrink-0 text-faint" />
+            Venda na UE: recebe via Revolut ou PayPal em € (não há Pix). O
+            cross-trading fora do jogo viola os Termos do Roblox — usa contas
+            verificadas e nunca pagues primeiro.
+          </p>
         </div>
 
         <div className="flex flex-col gap-3 rounded-lg bg-bg-sunken p-4">
@@ -184,10 +222,13 @@ export function Arbitrage() {
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] text-faint">Custo</dt>
+              <dt className="text-[11px] text-faint">
+                Custo{costUnit === "RP" ? " (Ride Pots)" : ""}
+              </dt>
               <dd className="font-mono text-sm tabular-nums">
-                {CURRENCY_PREFIX[costCurrency]}
+                {UNIT_PREFIX[costUnit]}
                 {costNum.toFixed(2)}
+                {costUnit === "RP" ? " RP" : ""}
               </dd>
             </div>
             <div>
@@ -199,6 +240,18 @@ export function Arbitrage() {
                 )}
               >
                 {formatMoney(grossMargin, currency)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[11px] text-faint">Taxa retida</dt>
+              <dd className="font-mono text-sm tabular-nums text-loss">
+                −{formatMoney(feeUsd, currency)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[11px] text-faint">Custo em {currency}</dt>
+              <dd className="font-mono text-sm tabular-nums text-muted">
+                {formatMoney(costUsd, currency)}
               </dd>
             </div>
           </dl>

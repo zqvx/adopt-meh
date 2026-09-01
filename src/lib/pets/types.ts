@@ -74,6 +74,12 @@ export interface SideTotals {
   trashPoints: number;
   trashNames: string[];
   lowLiqCount: number;
+  /** Items de procura/liquidez alta (pet tier S/A ou liq. high). */
+  strongCount: number;
+  /** Pontos concentrados num único item (0..1). */
+  concentration: number;
+  /** Procura média ponderada pelos pontos (1..5). */
+  avgDemand: number;
 }
 
 export interface TradeVerdict {
@@ -88,4 +94,24 @@ export interface TradeVerdict {
   risk: "clear" | "watch" | "danger";
   riskLabel: string;
   riskDetail: string;
+  /** Alerta de downgrade: trocas 1 item forte por muitos itens fracos. */
+  downgrade: boolean;
+  downgradeDetail: string;
+  /** Contra-proposta: pet forte que o outro devia acrescentar/trocar. */
+  counter: CounterSuggestion | null;
+  /** Estás a fazer UPGRADE (muitos médios por 1 forte): precisas de overpay. */
+  upgrade: boolean;
+  overpayPts: number;
+  overpayDetail: string;
+}
+
+export interface CounterSuggestion {
+  petId: string;
+  variant: Variant;
+  /** Porquê esta sugestão. */
+  reason: string;
+  /** Pontos do pet sugerido. */
+  points: number;
+  /** Quantos em falta (geralmente 1). */
+  qty: number;
 }

@@ -7,6 +7,7 @@ import type {
   Variant,
   VariantValue,
 } from "./types";
+import { getCustomPet, searchCustomPets } from "./custom";
 
 interface Seed {
   id: string;
@@ -87,11 +88,11 @@ const SEEDS: Seed[] = [
     demand: 5,
     featured: true,
     frPts: 800,
-    frUsd: 400,
+    frUsd: 413,
     glyph: "void",
     nfrMul: 2.31,
     mfrMul: 5.63,
-    usd: { regular: 340, fly: 365, ride: 380, fr: 400, nfr: 925, mfr: 2250 },
+    usd: { regular: 350, fly: 376, ride: 392, fr: 413, nfr: 900, mfr: 2250 },
     pts: { regular: 688, fly: 736, ride: 760, fr: 800, nfr: 1850, mfr: 4500 },
   },
   {
@@ -103,11 +104,11 @@ const SEEDS: Seed[] = [
     demand: 5,
     featured: true,
     frPts: 480,
-    frUsd: 240,
+    frUsd: 294,
     glyph: "night",
     nfrMul: 2.6,
     mfrMul: 5.21,
-    usd: { regular: 205, fly: 220, ride: 228, fr: 240, nfr: 625, mfr: 1250 },
+    usd: { regular: 251, fly: 270, ride: 279, fr: 294, nfr: 625, mfr: 1700 },
     pts: { regular: 413, fly: 442, ride: 456, fr: 480, nfr: 1250, mfr: 2500 },
   },
   {
@@ -119,11 +120,11 @@ const SEEDS: Seed[] = [
     demand: 5,
     featured: true,
     frPts: 340,
-    frUsd: 170,
+    frUsd: 198,
     glyph: "sun",
     nfrMul: 2.29,
     mfrMul: 7.35,
-    usd: { regular: 145, fly: 155, ride: 162, fr: 170, nfr: 390, mfr: 1250 },
+    usd: { regular: 169, fly: 181, ride: 189, fr: 198, nfr: 390, mfr: 1250 },
     pts: { regular: 292, fly: 313, ride: 323, fr: 340, nfr: 780, mfr: 2500 },
   },
   {
@@ -135,11 +136,11 @@ const SEEDS: Seed[] = [
     demand: 5,
     featured: true,
     frPts: 240,
-    frUsd: 120,
+    frUsd: 153,
     glyph: "frost",
     nfrMul: 2.33,
     mfrMul: 6.17,
-    usd: { regular: 100, fly: 108, ride: 114, fr: 120, nfr: 280, mfr: 740 },
+    usd: { regular: 128, fly: 138, ride: 145, fr: 153, nfr: 280, mfr: 740 },
     pts: { regular: 206, fly: 221, ride: 228, fr: 240, nfr: 560, mfr: 1480 },
   },
   {
@@ -151,11 +152,11 @@ const SEEDS: Seed[] = [
     demand: 5,
     featured: true,
     frPts: 230,
-    frUsd: 115,
+    frUsd: 130,
     glyph: "sand",
     nfrMul: 2.83,
     mfrMul: 9.13,
-    usd: { regular: 95, fly: 104, ride: 110, fr: 115, nfr: 325, mfr: 1050 },
+    usd: { regular: 107, fly: 118, ride: 124, fr: 130, nfr: 325, mfr: 1050 },
     pts: { regular: 198, fly: 212, ride: 218, fr: 230, nfr: 650, mfr: 2100 },
   },
   {
@@ -166,11 +167,11 @@ const SEEDS: Seed[] = [
     liq: "high",
     demand: 4,
     frPts: 170,
-    frUsd: 85,
+    frUsd: 109,
     glyph: "moss",
     nfrMul: 2.18,
     mfrMul: 8.24,
-    usd: { regular: 70, fly: 76, ride: 80, fr: 85, nfr: 185, mfr: 700 },
+    usd: { regular: 90, fly: 97, ride: 103, fr: 109, nfr: 185, mfr: 700 },
     pts: { regular: 146, fly: 156, ride: 162, fr: 170, nfr: 370, mfr: 1400 },
   },
   {
@@ -182,11 +183,11 @@ const SEEDS: Seed[] = [
     demand: 4,
     featured: true,
     frPts: 176,
-    frUsd: 88,
+    frUsd: 93,
     glyph: "ink",
     nfrMul: 2.27,
     mfrMul: 7.56,
-    usd: { regular: 72, fly: 78, ride: 84, fr: 88, nfr: 200, mfr: 665 },
+    usd: { regular: 76, fly: 82, ride: 89, fr: 93, nfr: 200, mfr: 665 },
     pts: { regular: 151, fly: 162, ride: 167, fr: 176, nfr: 400, mfr: 1330 },
   },
   {
@@ -239,7 +240,7 @@ const SEEDS: Seed[] = [
     liq: "high",
     demand: 4,
     frPts: 110,
-    frUsd: 55,
+    frUsd: 75,
     glyph: "blood",
     nfrMul: 2.6,
     mfrMul: 6.4,
@@ -252,7 +253,7 @@ const SEEDS: Seed[] = [
     liq: "high",
     demand: 4,
     frPts: 64,
-    frUsd: 32,
+    frUsd: 38,
     glyph: "pearl",
   },
   {
@@ -263,7 +264,7 @@ const SEEDS: Seed[] = [
     liq: "high",
     demand: 4,
     frPts: 44,
-    frUsd: 22,
+    frUsd: 21,
     glyph: "forest",
   },
   {
@@ -274,7 +275,7 @@ const SEEDS: Seed[] = [
     liq: "high",
     demand: 4,
     frPts: 36,
-    frUsd: 18,
+    frUsd: 8.5,
     glyph: "copper",
   },
   {
@@ -1036,6 +1037,164 @@ const SEEDS: Seed[] = [
     frUsd: 0.45,
     glyph: "ocean",
   },
+  // --- Pets populares recentes (valores aproximados de mercado; afinar via
+  // pet personalizado se o scraper não os tiver) ---
+  {
+    id: "sugar-glider",
+    name: "Sugar Glider",
+    aliases: ["sugar glider", "glider", "petauro", "esquilo voador"],
+    tier: "B",
+    liq: "low",
+    demand: 2,
+    frPts: 14,
+    frUsd: 3.1,
+    glyph: "mint",
+  },
+  {
+    id: "tree-kangaroo",
+    name: "Tree Kangaroo",
+    // NOTA: é o "canguru das árvores", pet diferente do Kangaroo (Aussie Egg).
+    // Mantém-se separado para não confundir cotações na pesquisa.
+    aliases: ["tree kangaroo", "canguru da arvore", "canguru arvore"],
+    tier: "C",
+    liq: "low",
+    demand: 2,
+    frPts: 8,
+    frUsd: 2.9,
+    glyph: "forest",
+  },
+  {
+    id: "albatross",
+    name: "Albatross",
+    aliases: ["albatroz", "albatross"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 14,
+    frUsd: 8,
+    glyph: "storm",
+  },
+  {
+    id: "galah",
+    name: "Galah",
+    aliases: ["galah", "catatua"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 10,
+    frUsd: 5.5,
+    glyph: "wine",
+  },
+  {
+    id: "abyssinian-cat",
+    name: "Abyssinian Cat",
+    aliases: ["abyssinian", "gato abissinio"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 12,
+    frUsd: 7,
+    glyph: "sand",
+  },
+  {
+    id: "sandbox-turtle",
+    name: "Sandbox Turtle",
+    aliases: ["sandbox turtle", "tartaruga sandbox"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 9,
+    frUsd: 5,
+    glyph: "forest",
+  },
+  {
+    id: "tweetheart",
+    name: "Tweetheart",
+    aliases: ["tweetheart"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 11,
+    frUsd: 6,
+    glyph: "blood",
+  },
+  {
+    id: "cheerful-otter",
+    name: "Cheerful Otter",
+    aliases: ["cheerful otter", "lontra"],
+    tier: "C",
+    liq: "low",
+    demand: 2,
+    frPts: 4,
+    frUsd: 2.2,
+    glyph: "ocean",
+  },
+  {
+    id: "maneki-neko",
+    name: "Maneki-Neko",
+    aliases: ["maneki neko", "maneki", "gato sorte"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 13,
+    frUsd: 7.5,
+    glyph: "pearl",
+  },
+  {
+    id: "zombie-wolf",
+    name: "Zombie Wolf",
+    aliases: ["zombie wolf", "lobo zombie"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 15,
+    frUsd: 8.5,
+    glyph: "bone",
+  },
+  {
+    id: "vampire-dragon",
+    name: "Vampire Dragon",
+    aliases: ["vampire dragon", "dragao vampiro"],
+    tier: "A",
+    liq: "medium",
+    demand: 4,
+    frPts: 45,
+    frUsd: 26,
+    glyph: "wine",
+  },
+  {
+    id: "undead-elk",
+    name: "Undead Elk",
+    aliases: ["undead elk", "alce undead"],
+    tier: "B",
+    liq: "medium",
+    demand: 3,
+    frPts: 16,
+    frUsd: 9,
+    glyph: "moss",
+  },
+  {
+    id: "chimera",
+    name: "Chimera",
+    aliases: ["chimera", "quimera"],
+    tier: "A",
+    liq: "medium",
+    demand: 4,
+    frPts: 40,
+    frUsd: 23,
+    glyph: "ember",
+  },
+  {
+    id: "lunar-ox",
+    name: "Lunar Ox",
+    aliases: ["lunar ox", "boi lunar"],
+    tier: "C",
+    liq: "low",
+    demand: 2,
+    frPts: 5,
+    frUsd: 2.8,
+    glyph: "steel",
+  },
   {
     id: "ride-potion",
     name: "Ride Potion",
@@ -1204,7 +1363,7 @@ export const PET_BY_ID: Record<string, Pet> = Object.fromEntries(
 export const FEATURED_PETS = PETS.filter((pet) => pet.featured);
 
 export function getPet(id: string) {
-  return PET_BY_ID[id];
+  return PET_BY_ID[id] ?? getCustomPet(id);
 }
 
 export function searchPets(query: string, limit = 12): Pet[] {
@@ -1218,6 +1377,11 @@ export function searchPets(query: string, limit = 12): Pet[] {
       })
       .slice(0, limit);
   }
+  // Pets personalizados do utilizador contam como resultados de topo.
+  const customHits = searchCustomPets(q, limit).map((pet) => ({
+    pet,
+    score: 90 + (pet.name.toLowerCase() === q ? 10 : 0),
+  }));
   const scored = PETS.map((pet) => {
     const name = pet.name.toLowerCase();
     const aliasHit = pet.aliases.some((alias) => alias.toLowerCase().includes(q));
@@ -1231,9 +1395,11 @@ export function searchPets(query: string, limit = 12): Pet[] {
     if (score > 0 && pet.featured) score += 2;
     return { pet, score };
   })
-    .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score || b.pet.values.fr.points - a.pet.values.fr.points);
-  return scored.slice(0, limit).map((row) => row.pet);
+    .filter((row) => row.score > 0);
+  return [...customHits, ...scored]
+    .sort((a, b) => b.score - a.score || b.pet.values.fr.points - a.pet.values.fr.points)
+    .slice(0, limit)
+    .map((row) => row.pet);
 }
 
 export function variantsFor(pet: Pet): Variant[] {

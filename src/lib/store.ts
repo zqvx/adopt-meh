@@ -16,13 +16,32 @@ export interface HistoryEntry {
   kind: string;
 }
 
+export interface Position {
+  id: string;
+  ts: number;
+  petId: string;
+  variant: Variant;
+  qty: number;
+  /** Preço total de compra em USD (custo efetivo). */
+  costUsd: number;
+}
+
+export interface InventoryItem {
+  id: string;
+  petId: string;
+  variant: Variant;
+  qty: number;
+}
+
 interface AppState {
   you: TradeLine[];
   them: TradeLine[];
   currency: Currency;
   feePct: number;
   history: HistoryEntry[];
-  tab: "trade" | "table" | "arb" | "history";
+  positions: Position[];
+  inventory: InventoryItem[];
+  tab: "live" | "invest" | "craft" | "trade" | "inventory" | "table" | "arb" | "history";
   addLine: (side: TradeSide, petId: string, variant: Variant) => void;
   removeLine: (side: TradeSide, id: string) => void;
   setQty: (side: TradeSide, id: string, qty: number) => void;
@@ -37,10 +56,24 @@ interface AppState {
   deleteHistory: (id: string) => void;
   restoreHistory: (id: string) => void;
   hydrateHistory: (entries: HistoryEntry[]) => void;
+  addPosition: (pos: Omit<Position, "id" | "ts">) => void;
+  removePosition: (id: string) => void;
+  hydratePositions: (positions: Position[]) => void;
+  addInventory: (petId: string, variant: Variant) => void;
+  setInventoryQty: (id: string, qty: number) => void;
+  removeInventory: (id: string) => void;
+  /** Consome 4 (néon) ou 16 (mega) pets base e junta o resultado ao inventário. */
+  craftPet: (petId: string, kind: "nfr" | "mfr") => boolean;
+  hydrateInventory: (items: InventoryItem[]) => void;
+  /** Marca a troca como concluída: tira os pets dados do inventário e junta
+   *  os recebidos, depois limpa a mesa. */
+  completeTrade: () => void;
 }
 
 const HISTORY_KEY = "nexus-trade-history-v1";
-const PREFS_KEY = "nexus-prefs-v1";
+const PREFS_KEY = "nexus-prefs-v2";
+const PORTFOLIO_KEY = "nexus-portfolio-v1";
+const INVENTORY_KEY = "nexus-inventory-v1";
 
 function sideOf(state: AppState, side: TradeSide) {
   return side === "you" ? state.you : state.them;
@@ -100,13 +133,53 @@ export function readHistory(): HistoryEntry[] {
   }
 }
 
+function persistPositions(positions: Position[]) {
+  try {
+    localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(positions.slice(0, 60)));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readPositions(): Position[] {
+  try {
+    const raw = localStorage.getItem(PORTFOLIO_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Position[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistInventory(items: InventoryItem[]) {
+  try {
+    localStorage.setItem(INVENTORY_KEY, JSON.stringify(items.slice(0, 200)));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readInventory(): InventoryItem[] {
+  try {
+    const raw = localStorage.getItem(INVENTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as InventoryItem[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export const useTradeStore = create<AppState>((set, get) => ({
   you: [],
   them: [],
-  currency: "USD",
+  currency: "EUR",
   feePct: 10,
   history: [],
-  tab: "trade",
+  positions: [],
+  inventory: [],
+  tab: "live",
   addLine: (side, petId, variant) => {
     const pet = getPet(petId);
     if (!pet) return;
@@ -183,7 +256,6 @@ export const useTradeStore = create<AppState>((set, get) => ({
         { id: uid(), petId: "owl", variant: "fr", qty: 1 },
         { id: uid(), petId: "crow", variant: "fr", qty: 1 },
       ],
-      tab: "trade",
     });
   },
   setCurrency: (currency) => {
@@ -230,4 +302,137 @@ export const useTradeStore = create<AppState>((set, get) => ({
     });
   },
   hydrateHistory: (entries) => set({ history: entries }),
+  addPosition: (pos) => {
+    const entry: Position = { ...pos, id: uid(), ts: Date.now() };
+    const next = [entry, ...get().positions].slice(0, 60);
+    set({ positions: next });
+    persistPositions(next);
+  },
+  removePosition: (id) => {
+    const next = get().positions.filter((p) => p.id !== id);
+    set({ positions: next });
+    persistPositions(next);
+  },
+  hydratePositions: (positions) => set({ positions }),
+  addInventory: (petId, variant) => {
+    const pet = getPet(petId);
+    if (!pet) return;
+    const resolved: Variant = pet.hasVariants ? variant : "regular";
+    set((state) => {
+      const existing = state.inventory.find(
+        (it) => it.petId === petId && it.variant === resolved,
+      );
+      const inventory = existing
+        ? state.inventory.map((it) =>
+            it.id === existing.id ? { ...it, qty: it.qty + 1 } : it,
+          )
+        : [
+            ...state.inventory,
+            { id: uid(), petId, variant: resolved, qty: 1 },
+          ];
+      persistInventory(inventory);
+      return { inventory };
+    });
+  },
+  setInventoryQty: (id, qty) => {
+    const next = Math.max(0, Math.min(999, Math.round(qty)));
+    set((state) => {
+      const inventory = state.inventory
+        .map((it) => (it.id === id ? { ...it, qty: next } : it))
+        .filter((it) => it.qty > 0);
+      persistInventory(inventory);
+      return { inventory };
+    });
+  },
+  removeInventory: (id) => {
+    set((state) => {
+      const inventory = state.inventory.filter((it) => it.id !== id);
+      persistInventory(inventory);
+      return { inventory };
+    });
+  },
+  craftPet: (petId, kind) => {
+    let done = false;
+    set((state) => {
+      const need = kind === "mfr" ? 16 : 4;
+      // Conta apenas cópias BASE (não-neon): regular/fly/ride/fr.
+      const baseVariants: Variant[] = ["regular", "fly", "ride", "fr"];
+      const lines = state.inventory
+        .filter((it) => it.petId === petId && baseVariants.includes(it.variant))
+        .sort((a, b) => a.qty - b.qty); // consome primeiro as menores pilhas
+      const total = lines.reduce((s, l) => s + l.qty, 0);
+      if (total < need) return {};
+
+      let remaining = need;
+      const consumeIds = new Map<string, number>(); // id -> qty a remover
+      for (const l of lines) {
+        if (remaining <= 0) break;
+        const take = Math.min(l.qty, remaining);
+        consumeIds.set(l.id, take);
+        remaining -= take;
+      }
+
+      let inventory = state.inventory
+        .map((it) => {
+          const take = consumeIds.get(it.id);
+          return take ? { ...it, qty: it.qty - take } : it;
+        })
+        .filter((it) => it.qty > 0);
+
+      // Junta o resultado (néon/mega) ao inventário.
+      const resultVariant: Variant = kind;
+      const existing = inventory.find(
+        (it) => it.petId === petId && it.variant === resultVariant,
+      );
+      if (existing) {
+        inventory = inventory.map((it) =>
+          it.id === existing.id ? { ...it, qty: it.qty + 1 } : it,
+        );
+      } else {
+        inventory = [
+          ...inventory,
+          { id: uid(), petId, variant: resultVariant, qty: 1 },
+        ];
+      }
+
+      persistInventory(inventory);
+      done = true;
+      return { inventory };
+    });
+    return done;
+  },
+  hydrateInventory: (items) => set({ inventory: items }),
+  completeTrade: () => {
+    set((state) => {
+      let inventory = [...state.inventory];
+      const consume = (lines: TradeLine[], receiving: boolean) => {
+        for (const line of lines) {
+          const pet = getPet(line.petId);
+          if (!pet) continue;
+          const variant: Variant = pet.hasVariants ? line.variant : "regular";
+          const existing = inventory.find(
+            (it) => it.petId === line.petId && it.variant === variant,
+          );
+          if (existing) {
+            inventory = inventory.map((it) =>
+              it.id === existing.id
+                ? {
+                    ...it,
+                    qty: receiving
+                      ? it.qty + line.qty
+                      : Math.max(0, it.qty - line.qty),
+                  }
+                : it,
+            ).filter((it) => it.qty > 0);
+          } else if (receiving) {
+            inventory.push({ id: uid(), petId: line.petId, variant, qty: line.qty });
+          }
+        }
+      };
+      consume(state.you, false); // o que dás sai do inventário
+      consume(state.them, true); // o que recebes entra
+      persistInventory(inventory);
+      return { inventory, you: [], them: [] };
+    });
+  },
 }));
