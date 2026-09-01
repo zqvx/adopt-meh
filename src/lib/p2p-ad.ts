@@ -9,7 +9,6 @@ import {
   siteNetEur,
   type Listing,
 } from "./p2p-pricing";
-import type { Customer } from "./crm-match";
 import type { Variant } from "./pets/types";
 
 /* ------------------------------------------------------------------ *
@@ -134,44 +133,6 @@ export function marketEurFor(
   return Math.round(usd * FX.EUR * 100) / 100;
 }
 
-
-/* ------------------------------------------------------------------ *
- * DM privada para clientes antigos (Livro Negro)
- * ------------------------------------------------------------------ */
-
-/**
- * Mensagem privada de venda prioritária. Vender a quem já te pagou uma vez
- * é a venda mais barata que existe: sem scammers, sem canais públicos.
- */
-export function privateDmText(
-  listing: Listing,
-  customer: Pick<Customer, "handle">,
-  opts: AdOptions = {},
-): string {
-  const price = decayPrice(listing, opts.now);
-  const qty = listing.qty > 1 ? `${listing.qty}x ` : "a ";
-  const item = adPetName(listing.petId, listing.variant);
-
-  const lines: (string | null)[] = [
-    `Yo @${customer.handle} 👋`,
-    "",
-    `Just got ${qty}${item}. Giving you priority before I post it on the public channels.`,
-    "",
-    adHeadline(listing.petId, listing.variant, price.eur * listing.qty, listing.qty),
-    PAYMENT_LINE,
-    "",
-    price.stage !== "golden"
-      ? "Doing a quick flip on this one, so it's below my usual price."
-      : "Same clean trade as last time: you check the pet in-game first, then you pay.",
-    opts.vouches && opts.vouches > 0
-      ? `⭐ ${opts.vouches} vouches so far, receipt for every trade.`
-      : null,
-    "",
-    "Want it? 🐾",
-  ];
-
-  return lines.filter((l): l is string => l !== null).join("\n");
-}
 
 /**
  * Preço máximo a que vale a pena COMPRAR stock para revender com margem.

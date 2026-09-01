@@ -1,14 +1,5 @@
-import {
-  ArrowRight,
-  Check,
-  Coffee,
-  Copy,
-  Flame,
-  Target,
-  TrendingDown,
-  Wallet,
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Coffee, Flame, TrendingDown, Wallet } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { PetGlyph } from "@/components/trade/PetGlyph";
 import { StockSniper } from "@/components/panels/StockSniper";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FX } from "@/lib/format";
 import { useLiveStore } from "@/lib/live-store";
 import { decayPrice, useP2PStore, QUICK_DAYS, daysListed } from "@/lib/p2p";
-import { buyTargetEur, privateDmText } from "@/lib/p2p-ad";
-import { matchCustomers, useCRMStore, type Match } from "@/lib/crm";
-import type { Listing } from "@/lib/p2p";
+import { buyTargetEur } from "@/lib/p2p-ad";
 import { getPet } from "@/lib/pets/catalog";
 import { lineValue } from "@/lib/pets/engine";
 import { useTradeStore } from "@/lib/store";
@@ -36,60 +25,6 @@ function greeting(hour: number) {
 }
 
 
-function VipRow({
-  listing,
-  match,
-  vouches,
-}: {
-  listing: Listing;
-  match: Match;
-  vouches: number;
-}) {
-  const [copied, setCopied] = useState(false);
-  const pet = getPet(listing.petId);
-  const dm = privateDmText(listing, match.customer, { vouches });
-
-  return (
-    <li className="flex flex-col gap-2 rounded-lg bg-bg-sunken p-3">
-      <div className="flex items-center gap-2.5">
-        <PetGlyph id={listing.petId} glyph={pet?.glyph ?? "ink"} size="sm" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm">
-            O teu {pet?.name ?? listing.petId}
-            {pet?.hasVariants ? ` ${listing.variant.toUpperCase()}` : ""} é para{" "}
-            <span className="text-accent">@{match.customer.handle}</span>
-          </p>
-          <p className="font-mono text-[11px] text-faint">{match.detail}</p>
-        </div>
-        <p className="shrink-0 font-mono text-sm tabular-nums">
-          {eur(decayPrice(listing).eur * listing.qty)}
-        </p>
-      </div>
-      <details className="rounded-md bg-surface-2 p-2">
-        <summary className="cursor-pointer font-mono text-[11px] text-muted">
-          Ver DM de venda privada
-        </summary>
-        <pre className="mt-2 text-[11px] leading-relaxed whitespace-pre-wrap text-fg">
-          {dm}
-        </pre>
-      </details>
-      <Button
-        size="sm"
-        variant="secondary"
-        className="self-start"
-        onClick={() => {
-          void navigator.clipboard?.writeText(dm);
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1600);
-        }}
-      >
-        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-        {copied ? "Copiado" : "Copiar DM de venda privada"}
-      </Button>
-    </li>
-  );
-}
-
 /**
  * Briefing matinal — o ecrã de arranque. Responde a três perguntas antes do
  * café acabar: o que tenho de despachar hoje, o que está a cair (vende já) e
@@ -103,30 +38,12 @@ export function MorningBriefing() {
   const setTab = useTradeStore((s) => s.setTab);
   const inventory = useTradeStore((s) => s.inventory);
   const quotes = useLiveStore((s) => s.quotes);
-  const hydrateCRM = useCRMStore((s) => s.hydrate);
-  const customers = useCRMStore((s) => s.customers);
 
   useEffect(() => {
     hydrate();
-    hydrateCRM();
-  }, [hydrate, hydrateCRM]);
+  }, [hydrate]);
 
   const active = listings.filter((l) => l.status === "active");
-
-  /** Cruzamento stock × clientes: a quem mandar DM hoje. */
-  const vipTargets = useMemo(() => {
-    if (customers.length === 0) return [];
-    return active
-      .map((listing) => ({
-        listing,
-        matches: matchCustomers(
-          { petId: listing.petId, priceEur: decayPrice(listing).eur * listing.qty },
-          customers,
-        ),
-      }))
-      .filter((row) => row.matches.length > 0)
-      .slice(0, 4);
-  }, [active, customers]);
 
   /** Stock parado: já saiu da janela golden (dia 4+) — tem de sair hoje. */
   const stale = useMemo(
@@ -214,32 +131,6 @@ export function MorningBriefing() {
           </div>
         </div>
       </section>
-
-      {vipTargets.length > 0 ? (
-        <section className="flex flex-col gap-3 rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
-          <header>
-            <p className="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.16em] text-faint uppercase">
-              <Target className="size-3.5 text-accent" />
-              Mensagens diretas (VIPs)
-            </p>
-            <h3 className="text-base font-medium tracking-tight">
-              Vende primeiro a quem já te pagou
-            </h3>
-          </header>
-          <ul className="flex flex-col gap-2">
-            {vipTargets.map((row) =>
-              row.matches.slice(0, 2).map((match) => (
-                <VipRow
-                  key={`${row.listing.id}-${match.customer.id}`}
-                  listing={row.listing}
-                  match={match}
-                  vouches={vouches}
-                />
-              )),
-            )}
-          </ul>
-        </section>
-      ) : null}
 
       <section className="flex flex-col gap-3 rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
         <header className="flex flex-wrap items-center justify-between gap-2">

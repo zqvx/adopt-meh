@@ -28,10 +28,7 @@ mercado 50 €  →  o site paga-te 44 €  →  tu vendes a 47 €
 | `src/components/panels/P2PCentral.tsx` | Separador **Central P2P**: caixa/reputação/pipeline, criar anúncio, cartões com anúncio pronto a copiar e botão “Vendido · recibo”. |
 | `src/components/panels/MorningBriefing.tsx` | Separador de arranque **Missão do Dia**: stock parado a despachar, alerta de pets a cair ≥3%, capital livre. |
 | `src/components/panels/StockSniper.tsx` | Cartões de deep links + teto de compra (usado no briefing e no separador Margem). |
-| `src/lib/crm-match.ts` | Motor do **Livro Negro** (puro, testado): `normalizeHandle`, `isWhale`, `matchCustomers`, `withPurchase`, `topSpendEur`. |
-| `src/lib/crm.ts` | Store zustand `nexus-crm-v1` (localStorage): clientes, `recordSale`, notas. |
 | `src/lib/p2p.test.ts` | 10 testes da tabela de preços, do decay e do câmbio. |
-| `src/lib/crm.test.ts` | 8 testes do matching de clientes. |
 
 ## Ficheiros alterados
 
@@ -43,22 +40,6 @@ mercado 50 €  →  o site paga-te 44 €  →  tu vendes a 47 €
 - `src/components/panels/HistoryPanel.tsx` — botão de vouch por entrada
   (regista venda P2P, +1 vouch, descarrega o recibo).
 - `package.json` — `npm test` passou a incluir `src/lib/p2p.test.ts`.
-
-## Livro Negro (CRM de baleias)
-
-Quem paga 50 € hoje paga outra vez daqui a um mês — vender por DM a quem já
-confia em ti demora 30 segundos e não tem scammers.
-
-- Ao clicar em **“Vendido · recibo”** a app pede o **@ do comprador** e
-  guarda-o (o @ também vai no recibo). Sem @ a venda fecha na mesma.
-- O **Briefing Matinal** cruza o stock em anúncio com o histórico de compras e
-  mostra a secção **Mensagens diretas (VIPs)** com a DM pronta a copiar
-  (“Giving you priority before I post on public channels…”).
-- Prioridade do matching: já comprou este pet → compra nesta faixa de preço →
-  é baleia (≥40 € gastos ou ≥2 compras). Clientes parados há 30/60+ dias
-  perdem peso; itens muito acima do poder de compra não são sugeridos.
-- O separador **Central P2P** tem a lista de clientes ordenada por total gasto,
-  com selo de baleia, maior compra e dias desde a última.
 
 ## Câmbio automático no anúncio (€ / $ / £)
 
@@ -82,8 +63,7 @@ DMs open 📩
 
 Multiplicadores fixos em `p2p-pricing.ts`: `EUR_TO_USD = 1,10`,
 `EUR_TO_GBP = 0,85` (conservadores de propósito — nunca pedes a menos).
-`adHeadline()` monta a primeira linha (emoji do pet + variante + 3 moedas) e é
-partilhada pelo anúncio público e pela DM privada do Livro Negro.
+`adHeadline()` monta a primeira linha (emoji do pet + variante + 3 moedas).
 
 ## Tabela de preços
 
@@ -102,7 +82,7 @@ partilhada pelo anúncio público e pela DM privada do Livro Negro.
 - `eslint src` sem erros novos (mantêm-se 1 erro + 1 aviso pré-existentes em
   `src/lib/app-data/`).
 - `vite build` OK.
-- `npm run test:app` → **50/50** (inclui os 18 novos: preços, câmbio e CRM).
+- `npm run test:app` → **42/42** (inclui os 10 novos: preços, decay e câmbio).
   O `npm test` passou a correr os testes da app **primeiro**, porque as 8
   falhas pré-existentes em `scripts/grok-pwa-plugin.test.mjs` (o título de
   `og:title` mudou quando a app foi rebatizada NEXUS) cortavam a cadeia `&&`
@@ -121,3 +101,12 @@ partilhada pelo anúncio público e pela DM privada do Livro Negro.
   links do Stock Sniper.
 - Aviso permanente: cross-trading por dinheiro viola os ToS da Roblox/Uplift —
   a app é uma ferramenta de referência.
+
+## Fora de âmbito (por decisão do utilizador)
+
+- **Livro Negro / CRM de clientes** — foi implementado e depois removido a
+  pedido (só se quis o conversor FX). Fica no histórico: o código está no
+  commit `397cf6c` e volta com
+  `git revert <commit-da-remoção>` ou
+  `git checkout 397cf6c -- src/lib/crm.ts src/lib/crm-match.ts src/lib/crm.test.ts`.
+- **Ferramenta anti-ban** — nunca chegou a ser especificada nem começada.

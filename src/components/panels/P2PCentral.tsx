@@ -3,12 +3,10 @@ import {
   Clock,
   Copy,
   Euro,
-  NotebookPen,
   Plus,
   Receipt,
   Star,
   Trash2,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PetGlyph } from "@/components/trade/PetGlyph";
@@ -19,7 +17,6 @@ import { StockSniper } from "@/components/panels/StockSniper";
 import { VARIANT_LABEL, VARIANT_ORDER } from "@/lib/format";
 import { useLiveStore } from "@/lib/live-store";
 import { generateAd, marketEurFor, priceLadder } from "@/lib/p2p-ad";
-import { useCRMStore, daysSince, isWhale, topSpendEur } from "@/lib/crm";
 import { generateP2PReceipt } from "@/lib/p2p-receipt";
 import {
   daysListed,
@@ -214,10 +211,6 @@ function ListingCard({ listing }: { listing: Listing }) {
   const removeListing = useP2PStore((s) => s.removeListing);
   const [copied, setCopied] = useState(false);
 
-  const recordSale = useCRMStore((s) => s.recordSale);
-  const [asking, setAsking] = useState(false);
-  const [buyer, setBuyer] = useState("");
-
   const pet = getPet(listing.petId);
   const price = decayPrice(listing);
   const days = daysListed(listing);
@@ -298,7 +291,23 @@ function ListingCard({ listing }: { listing: Listing }) {
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
               {copied ? "Copiado" : "Copiar anúncio"}
             </Button>
-            <Button size="sm" onClick={() => setAsking(true)}>
+            <Button
+              size="sm"
+              onClick={() => {
+                const vouch = vouches + 1;
+                markSold(listing.id);
+                const { url } = generateP2PReceipt({
+                  petId: listing.petId,
+                  variant: listing.variant,
+                  eur: total,
+                  vouch,
+                });
+                downloadReceipt(
+                  url,
+                  `vouch-${String(vouch).padStart(3, "0")}.png`,
+                );
+              }}
+            >
               <Euro className="size-3.5" />
               Vendido · recibo
             </Button>
@@ -312,68 +321,6 @@ function ListingCard({ listing }: { listing: Listing }) {
             </Button>
           </div>
 
-          {asking ? (
-            <form
-              className="flex flex-col gap-2 rounded-md bg-surface-2 p-2.5"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const handle = buyer.trim();
-                const vouch = vouches + 1;
-                if (handle) {
-                  recordSale(handle, {
-                    ts: Date.now(),
-                    petId: listing.petId,
-                    variant: listing.variant,
-                    eur: total,
-                  });
-                }
-                markSold(listing.id);
-                const { url } = generateP2PReceipt({
-                  petId: listing.petId,
-                  variant: listing.variant,
-                  eur: total,
-                  vouch,
-                  buyer: handle ? `@${handle.replace(/^@+/, "")}` : undefined,
-                });
-                downloadReceipt(
-                  url,
-                  `vouch-${String(vouch).padStart(3, "0")}.png`,
-                );
-                setAsking(false);
-                setBuyer("");
-              }}
-            >
-              <label className="font-mono text-[10px] tracking-wide text-faint uppercase">
-                @ do comprador (entra no Livro Negro)
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  autoFocus
-                  value={buyer}
-                  onChange={(e) => setBuyer(e.target.value)}
-                  placeholder="@sniperboy2012"
-                  className="h-9"
-                />
-                <Button size="sm" type="submit">
-                  <Check className="size-3.5" />
-                  Fechar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  type="button"
-                  onClick={() => setAsking(false)}
-                  aria-label="Cancelar"
-                >
-                  <X className="size-3.5" />
-                </Button>
-              </div>
-              <p className="text-[11px] text-faint">
-                Sem @ também dá — mas perdes o cliente para futuras vendas
-                privadas.
-              </p>
-            </form>
-          ) : null}
         </>
       ) : (
         <div className="flex gap-2">
@@ -409,82 +356,6 @@ function ListingCard({ listing }: { listing: Listing }) {
 }
 
 /* ------------------------------------------------------------------ */
-
-/** Livro Negro: quem já te pagou. São estes que compram outra vez. */
-function BlackBook() {
-  const hydrate = useCRMStore((s) => s.hydrate);
-  const customers = useCRMStore((s) => s.customers);
-  const removeCustomer = useCRMStore((s) => s.removeCustomer);
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
-  const ranked = useMemo(
-    () => [...customers].sort((a, b) => b.totalEur - a.totalEur),
-    [customers],
-  );
-
-  return (
-    <section className="flex flex-col gap-3 rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
-      <header>
-        <p className="flex items-center gap-1.5 font-mono text-[11px] tracking-[0.16em] text-faint uppercase">
-          <NotebookPen className="size-3.5 text-accent" />
-          Livro Negro
-        </p>
-        <h3 className="text-base font-medium tracking-tight">
-          Clientes · quem já pagou volta a pagar
-        </h3>
-      </header>
-
-      {ranked.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted">
-          Ainda sem clientes. Quando fechares uma venda, escreve o @ do
-          comprador — a app passa a avisar-te quando tens stock para ele.
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-1.5">
-          {ranked.map((c) => {
-            const idle = daysSince(c.lastTs);
-            return (
-              <li
-                key={c.id}
-                className="flex items-center gap-2.5 rounded-lg bg-bg-sunken p-2.5"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-surface-3 font-mono text-xs text-accent">
-                  {c.handle.slice(0, 2).toUpperCase()}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 truncate text-sm">
-                    @{c.handle}
-                    {isWhale(c) ? <Badge tone="accent">baleia</Badge> : null}
-                  </p>
-                  <p className="font-mono text-[11px] text-faint">
-                    {c.purchases.length}{" "}
-                    {c.purchases.length === 1 ? "compra" : "compras"} · maior{" "}
-                    {eur(topSpendEur(c))} ·{" "}
-                    {idle === 0 ? "hoje" : `há ${idle} d`}
-                  </p>
-                </div>
-                <p className="shrink-0 font-mono text-sm text-accent tabular-nums">
-                  {eur(c.totalEur)}
-                </p>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  onClick={() => removeCustomer(c.id)}
-                  aria-label="Remover cliente"
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 
@@ -563,8 +434,6 @@ export function P2PCentral() {
           </div>
         ) : null}
       </section>
-
-      <BlackBook />
 
       <StockSniper />
 
