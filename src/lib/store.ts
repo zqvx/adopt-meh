@@ -33,7 +33,7 @@ interface AppState {
   feePct: number;
   history: HistoryEntry[];
   positions: Position[];
-  tab: "live" | "invest" | "trade" | "table" | "arb" | "history";
+  tab: "live" | "invest" | "craft" | "trade" | "table" | "arb" | "history";
   addLine: (side: TradeSide, petId: string, variant: Variant) => void;
   removeLine: (side: TradeSide, id: string) => void;
   setQty: (side: TradeSide, id: string, qty: number) => void;

@@ -1,5 +1,6 @@
 import {
   Calculator,
+  FlaskConical,
   History,
   Radio,
   Scale,
@@ -25,10 +26,12 @@ import { HistoryPanel } from "@/components/panels/HistoryPanel";
 import { TierTable } from "@/components/panels/TierTable";
 import { LiveBoard } from "@/components/panels/LiveBoard";
 import { InvestPanel } from "@/components/panels/InvestPanel";
+import { CraftPanel } from "@/components/panels/CraftPanel";
 
 const TABS = [
   { id: "live", label: "Ao Vivo", icon: Radio },
   { id: "invest", label: "Investir", icon: TrendingUp },
+  { id: "craft", label: "Criação", icon: FlaskConical },
   { id: "trade", label: "Troca", icon: Scale },
   { id: "table", label: "Tabela", icon: Table2 },
   { id: "arb", label: "Margem", icon: Calculator },
@@ -210,6 +213,7 @@ export function AppShell() {
 
         {tab === "live" ? <LiveBoard /> : null}
         {tab === "invest" ? <InvestPanel /> : null}
+        {tab === "craft" ? <CraftPanel /> : null}
         {tab === "trade" ? <TradeBoard /> : null}
         {tab === "table" ? <TierTable /> : null}
         {tab === "arb" ? <Arbitrage /> : null}
