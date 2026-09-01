@@ -1,11 +1,4 @@
-import {
-  CircleDollarSign,
-  Plus,
-  Search,
-  Trash2,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
+import { CircleDollarSign, Plus, Search, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getPet, searchPets, variantsFor } from "@/lib/pets/catalog";
 import { useLiveStore } from "@/lib/live-store";
@@ -17,13 +10,7 @@ import {
   type Signal,
 } from "@/lib/pets/live";
 import { RIDE_POTION_USD } from "@/lib/pets/engine";
-import {
-  CURRENCY_PREFIX,
-  FX,
-  formatMoney,
-  formatPct,
-  VARIANT_SHORT,
-} from "@/lib/format";
+import { CURRENCY_PREFIX, FX, formatMoney, formatPct, VARIANT_SHORT } from "@/lib/format";
 import type { Currency, Pet, Variant } from "@/lib/pets/types";
 import { useTradeStore, type Position } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -78,15 +65,11 @@ function RecommendCard({ sig }: { sig: QuoteSignal }) {
       <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-[11px]">
         <div className="rounded bg-surface-2 px-2 py-1.5">
           <p className="text-faint">Compra abaixo de</p>
-          <p className="text-accent tabular-nums">
-            {formatMoney(sig.zones.buyBelowUsd, currency)}
-          </p>
+          <p className="text-accent tabular-nums">{formatMoney(sig.zones.buyBelowUsd, currency)}</p>
         </div>
         <div className="rounded bg-surface-2 px-2 py-1.5">
           <p className="text-faint">Vende acima de</p>
-          <p className="text-warn tabular-nums">
-            {formatMoney(sig.zones.sellAboveUsd, currency)}
-          </p>
+          <p className="text-warn tabular-nums">{formatMoney(sig.zones.sellAboveUsd, currency)}</p>
         </div>
       </div>
 
@@ -133,9 +116,7 @@ interface PositionView extends Position {
 function PositionRow({ pos }: { pos: PositionView }) {
   const currency = useTradeStore((s) => s.currency);
   const removePosition = useTradeStore((s) => s.removePosition);
-  const variantLabel = pos.pet.hasVariants
-    ? VARIANT_SHORT[pos.variant]
-    : pos.pet.category;
+  const variantLabel = pos.pet.hasVariants ? VARIANT_SHORT[pos.variant] : pos.pet.category;
   const meta = SIGNAL_META[pos.action];
   const profit = pos.pnlUsd >= 0;
 
@@ -151,8 +132,7 @@ function PositionRow({ pos }: { pos: PositionView }) {
           </span>
         </p>
         <p className="font-mono text-[11px] text-muted">
-          custo {formatMoney(pos.costUsd, currency)} → vale{" "}
-          {formatMoney(pos.netUsd, currency)} líq.
+          custo {formatMoney(pos.costUsd, currency)} → vale {formatMoney(pos.netUsd, currency)} líq.
           {!pos.live ? " (ref.)" : ""}
         </p>
       </div>
@@ -167,10 +147,7 @@ function PositionRow({ pos }: { pos: PositionView }) {
           {formatMoney(Math.abs(pos.pnlUsd), currency)}
         </p>
         <p
-          className={cn(
-            "font-mono text-[11px] tabular-nums",
-            profit ? "text-accent" : "text-loss",
-          )}
+          className={cn("font-mono text-[11px] tabular-nums", profit ? "text-accent" : "text-loss")}
         >
           {profit ? "+" : "−"}
           {Math.abs(pos.pnlPct * 100).toFixed(1)}%
@@ -183,7 +160,7 @@ function PositionRow({ pos }: { pos: PositionView }) {
         type="button"
         onClick={() => removePosition(pos.id)}
         className="flex size-8 shrink-0 items-center justify-center rounded-sm text-faint hover:text-loss"
-        title="Remover posição"
+        aria-label={`Remover ${pos.pet.name}`}
       >
         <Trash2 className="size-4" />
       </button>
@@ -236,6 +213,20 @@ function AddPositionForm() {
     }
   }
 
+  /**
+   * Troca a unidade do custo convertendo o valor já escrito — sem isto,
+   * mudar de € para $ reinterpretava o número silenciosamente (10 € → "10 $").
+   */
+  function changeUnit(next: CostUnit) {
+    if (next === unit) return;
+    if (cost.trim() !== "" && costNum > 0) {
+      const usd = costNum * unitUsd;
+      const nextRate = next === "RP" ? RIDE_POTION_USD : 1 / FX[next];
+      setCost((usd * nextRate).toFixed(2));
+    }
+    setUnit(next);
+  }
+
   function submit() {
     if (!picked || costNum <= 0) return;
     addPosition({ petId: picked.id, variant, qty: qtyNum, costUsd });
@@ -264,7 +255,7 @@ function AddPositionForm() {
           onFocus={() => setOpen(true)}
           placeholder="Pet que compraste…"
         />
-        {open && query ? (
+        {open && query && matches.length > 0 ? (
           <ul className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-md bg-surface-2 shadow-[var(--shadow-border)]">
             {matches.map((pet) => (
               <li key={pet.id}>
@@ -291,6 +282,7 @@ function AddPositionForm() {
                   key={v}
                   type="button"
                   onClick={() => setVariant(v)}
+                  aria-pressed={variant === v}
                   className={cn(
                     "h-8 rounded-full px-2.5 font-mono text-[11px]",
                     variant === v ? "bg-fg text-bg" : "bg-surface-2 text-muted",
@@ -327,10 +319,11 @@ function AddPositionForm() {
                     <button
                       key={u}
                       type="button"
-                      onClick={() => setUnit(u)}
+                      onClick={() => changeUnit(u)}
+                      aria-pressed={unit === u}
                       className={cn(
                         "h-11 w-11 rounded-md font-mono text-[11px]",
-                        unit === u ? "bg-fg text-bg" : "text-muted",
+                        unit === u ? "bg-fg text-bg" : "text-muted hover:text-fg",
                       )}
                     >
                       {u === "RP" ? "RP" : CURRENCY_PREFIX[u]}
@@ -346,8 +339,8 @@ function AddPositionForm() {
             Adicionar à carteira
           </Button>
           <p className="text-[10px] text-faint">
-            Custo em USD: ${costUsd.toFixed(2)} · valor de venda líquido calculado com
-            taxa de {feePct}%
+            Custo em USD: ${costUsd.toFixed(2)} · valor de venda líquido calculado com taxa de{" "}
+            {feePct}%
           </p>
         </div>
       ) : null}
@@ -417,12 +410,10 @@ export function InvestPanel() {
         <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">
           Carteira de investimento
         </p>
-        <h2 className="text-lg font-medium tracking-tight">
-          Comprar na baixa, vender na alta
-        </h2>
+        <h2 className="text-lg font-medium tracking-tight">Comprar na baixa, vender na alta</h2>
         <p className="text-sm text-muted">
-          Regista o que compraste; o terminal avalia em tempo real e diz-te quando
-          vender. Valores sobre referências comunitárias (não há preços oficiais).
+          Regista o que compraste; o terminal avalia em tempo real e diz-te quando vender. Valores
+          sobre referências comunitárias (não há preços oficiais).
         </p>
 
         {holdings.length > 0 ? (
@@ -438,19 +429,15 @@ export function InvestPanel() {
               )}
             >
               <p className="text-[11px] text-faint">Lucro líquido (após taxa)</p>
-              <p
-                className={cn(
-                  "tabular-nums",
-                  totalPnl >= 0 ? "text-accent" : "text-loss",
-                )}
-              >
+              <p className={cn("tabular-nums", totalPnl >= 0 ? "text-accent" : "text-loss")}>
                 {totalPnl >= 0 ? "+" : "−"}
-                {formatMoney(Math.abs(totalPnl), currency)} ·{" "}
-                {totalPnl >= 0 ? "+" : "−"}
+                {formatMoney(Math.abs(totalPnl), currency)} · {totalPnl >= 0 ? "+" : "−"}
                 {Math.abs(totalPnlPct * 100).toFixed(1)}%
               </p>
             </div>
-            <div className={cn("rounded-lg px-3 py-2", toSell > 0 ? "bg-warn-dim" : "bg-bg-sunken")}>
+            <div
+              className={cn("rounded-lg px-3 py-2", toSell > 0 ? "bg-warn-dim" : "bg-bg-sunken")}
+            >
               <p className="text-[11px] text-faint">Posições para vender</p>
               <p className={cn("tabular-nums", toSell > 0 && "text-warn")}>
                 {toSell} {toSell === 1 ? "posição" : "posições"}
@@ -470,9 +457,7 @@ export function InvestPanel() {
             <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
               <TrendingDown className="size-4 text-accent" />
               Zonas de compra
-              <span className="font-mono text-[11px] text-faint">
-                (preço abaixo do teto)
-              </span>
+              <span className="font-mono text-[11px] text-faint">(preço abaixo do teto)</span>
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {buys.map((sig) => (
@@ -480,8 +465,7 @@ export function InvestPanel() {
               ))}
               {buys.length === 0 ? (
                 <p className="rounded-lg bg-bg-sunken px-3 py-4 text-xs text-muted">
-                  Sem oportunidades de compra neste momento — espera que o mercado
-                  arrefeça.
+                  Sem oportunidades de compra neste momento — espera que o mercado arrefeça.
                 </p>
               ) : null}
             </div>
@@ -491,9 +475,7 @@ export function InvestPanel() {
             <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
               <TrendingUp className="size-4 text-warn" />
               Zonas de venda
-              <span className="font-mono text-[11px] text-faint">
-                (preço acima do chão)
-              </span>
+              <span className="font-mono text-[11px] text-faint">(preço acima do chão)</span>
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {sells.map((sig) => (
@@ -517,8 +499,8 @@ export function InvestPanel() {
             </p>
             {holdings.length === 0 ? (
               <p className="px-4 py-6 text-center text-sm text-muted">
-                Ainda não registaste compras. Usa o formulário acima ou o botão
-                “Registar compra” nas zonas de compra.
+                Ainda não registaste compras. Usa o formulário acima ou o botão “Registar compra”
+                nas zonas de compra.
               </p>
             ) : (
               holdings.map((pos) => <PositionRow key={pos.id} pos={pos} />)
@@ -530,10 +512,9 @@ export function InvestPanel() {
       <SourcesCard />
 
       <p className="text-[11px] text-faint">
-        Os sinais usam valores de referência comunitários e um feed simulado — não
-        existe cotação oficial em tempo real do Adopt Me. Confirma a procura atual
-        antes de fechar negócio e lembra-te: cross-trading por dinheiro real viola os
-        Termos do Roblox.
+        Os sinais usam valores de referência comunitários e um feed simulado — não existe cotação
+        oficial em tempo real do Adopt Me. Confirma a procura atual antes de fechar negócio e
+        lembra-te: cross-trading por dinheiro real viola os Termos do Roblox.
       </p>
     </section>
   );
