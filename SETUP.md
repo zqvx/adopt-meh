@@ -40,21 +40,32 @@ git checkout arena/01a05af2-adopt-meh
 
 ---
 
-## 3. Instalar e arrancar — modo FÁCIL (um clique)
+## 3. Instalar e arrancar — um clique (faz tudo)
 
-Depois de extrair o ZIP:
+Depois de extrair o ZIP, há **um só ficheiro** que trata de tudo:
 
 - **Windows:** faz **duplo-clique em `INICIAR.bat`**.
-  - Na primeira vez ele verifica o Node: se faltar, tenta instalar sozinho
-    (winget); se não conseguir, abre o site do Node para instalares. Depois
-    instala as dependências e abre o navegador em `http://localhost:8080`.
-  - Da segunda vez em diante arranca em segundos.
 - **Mac / Linux:** num terminal dentro da pasta:
   ```
   ./iniciar.sh
   ```
 
-Para parar o terminal: foca a janela e prime `Ctrl + C`.
+O lançador, por esta ordem:
+1. Verifica o **Node.js** — se faltar, instala sozinho (winget) ou abre o site;
+2. Se o projeto foi clonado com **Git**, procura atualizações do código (`git pull`,
+   sem falhar se estiveres offline);
+3. Instala as dependências só da primeira vez;
+4. Arranca e abre o navegador em `http://localhost:8080`.
+
+Os **preços são buscados em direto aos sites** enquanto a app corre (atualizam
+sozinhos), por isso não precisas de fazer nada para ter valores frescos.
+
+Para parar: foca a janela e prime `Ctrl + C`. No futuro é só abrir o mesmo
+`INICIAR.bat` — ele atualiza-se sozinho.
+
+> Se usaste a versão **ZIP (sem Git)**, o código não se atualiza sozinho: para
+> teres a versão mais nova volta ao GitHub e faz *Download ZIP* outra vez. Os
+> preços continuam a atualizar-se na mesma.
 
 ---
 
@@ -74,22 +85,18 @@ Para parar: `Ctrl + C`. Para voltar a abrir: `npm run dev`.
 
 ---
 
-## 4. Manter os preços atualizados (opcional, no teu PC há internet)
+## 4. Manter os preços atualizados
 
-Os ficheiros em `public/data/` já trazem valores reais de set. 2026. Para
-atualizar a partir dos sites de referência:
+Não precisas de fazer nada: enquanto a app corre (`npm run dev`), o servidor
+local busca os preços em direto aos sites de referência (cache de 10 min) e a
+app mostra-os automaticamente.
+
+Se quiseres atualizar à mão o ficheiro base (`public/data/values.json`), por
+exemplo para usar offline:
 
 ```
 npm run scrape:values     # preços em dinheiro (BloxUltra + Eldorado)
 npm run scrape:points     # pontos comunitários (Elvebredd) — cruzamento
-```
-
-A app lê estes ficheiros automaticamente — basta recarregar a página.
-
-Para atualizar sozinho de 6 em 6 horas (Windows, usa o **Agendador de
-Tarefas**; Mac/Linux usa `crontab -e`):
-```
-0 0,6,12,18 * * * cd C:\caminho\para\adopt-meh && npm run scrape:values
 ```
 
 ---
