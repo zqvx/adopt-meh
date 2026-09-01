@@ -41,9 +41,36 @@ Atualizar automaticamente (Linux/macOS, `crontab -e`), de 6 em 6 horas:
 - Para adicionar/alterar correspondências de nomes, edita `NAME_TO_ID` no
   `scripts/scrape-values.mjs`.
 
-## Discord / TikTok (opcional, futura expansão)
+## Cruzamento de fontes (detetar inflação)
 
-A volatilidade real e o hype acontecem em Discord/TikTok LIVE. Um bot de
-Discord (webhook) pode escrever linhas extra no `values.json`
-(ex.: `sentiment`, `hype`) para o terminal ler — o formato do ficheiro já
-suporta campos adicionais por pet sem quebrar o parser.
+`npm run scrape:points` extrai os **pontos comunitários** do Elvebredd para
+`public/data/points.json`. O terminal compara o $/ponto (dinheiro do
+BloxUltra) com a mediana: um pet cujo rácio desvia +28% aparece como
+**INFLACIONADO** (cuidado a comprar), −22% como **BARATO** (oportunidade).
+Se o scraper não correr, usa os pontos do próprio catálogo como fallback.
+
+## Hype em tempo real via Discord (ponto #2)
+
+`public/data/hype.json` guarda um score de procura 0–100 por pet. O terminal
+mostra-o como 🔥 no feed Ao Vivo. Para o alimentar a sério:
+
+```bash
+export DISCORD_TOKEN="token-do-bot"
+export DISCORD_CHANNELS="id_canal1,id_canal2"
+npm run hype:discord -- --once     # lê histórico recente e grava
+npm run hype:discord -- --watch    # fica a escutar e atualiza de 5 em 5 min
+npm run hype:discord -- --webhook  # recetor HTTP (PORT=8090) p/ reencaminhador
+```
+
+O bot conta menções de cada pet nas mensagens dos canais de trading e
+normaliza com escala logarítmica (um pet popular não esmaga os outros). Sem
+token, usa-se a semente `hype.json`. O TikTok LIVE não tem API de chat
+pública — a alternativa é um reencaminhador teu que faça POST de mensagens
+para o modo `--webhook`.
+
+## Alerta de downgrade
+
+No simulador de trocas, `evaluateTrade` deteta quando dás poucos itens
+**fortes** (alta procura/concentrados) e recebes muitos itens **fracos**:
+mesmo que os pontos deem "justo", marca **Downgrade · armadilha de
+liquidez**, porque ficas com ativos difíceis de voltar a trocar.

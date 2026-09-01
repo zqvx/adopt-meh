@@ -74,6 +74,12 @@ export interface SideTotals {
   trashPoints: number;
   trashNames: string[];
   lowLiqCount: number;
+  /** Items de procura/liquidez alta (pet tier S/A ou liq. high). */
+  strongCount: number;
+  /** Pontos concentrados num único item (0..1). */
+  concentration: number;
+  /** Procura média ponderada pelos pontos (1..5). */
+  avgDemand: number;
 }
 
 export interface TradeVerdict {
@@ -88,4 +94,7 @@ export interface TradeVerdict {
   risk: "clear" | "watch" | "danger";
   riskLabel: string;
   riskDetail: string;
+  /** Alerta de downgrade: trocas 1 item forte por muitos itens fracos. */
+  downgrade: boolean;
+  downgradeDetail: string;
 }

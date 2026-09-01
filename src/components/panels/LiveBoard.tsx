@@ -13,6 +13,7 @@ import {
   type QuoteSignal,
   SIGNAL_META,
 } from "@/lib/pets/live";
+import { hypeScore, inflationFor, useMarketStore } from "@/lib/market-data";
 import { formatMoney, formatPct, VARIANT_SHORT } from "@/lib/format";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -64,12 +65,22 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
   const currency = useTradeStore((s) => s.currency);
   const addLine = useTradeStore((s) => s.addLine);
   const setTab = useTradeStore((s) => s.setTab);
+  const marketData = useMarketStore((s) => s.data);
+  const hypeData = useMarketStore((s) => s.hype);
   const pet = getPet(sig.quote.petId);
   if (!pet) return null;
   const meta = SIGNAL_META[sig.signal];
   const variantLabel = pet.hasVariants
     ? VARIANT_SHORT[sig.quote.variant]
     : pet.category;
+  const hype = hypeScore(sig.quote.petId, hypeData, pet.demand);
+  const infl = inflationFor(sig.quote.petId, marketData, pet.values.fr.points);
+  const inflTone =
+    infl?.inflation === "overhyped"
+      ? "loss"
+      : infl?.inflation === "undervalued"
+        ? "accent"
+        : "neutral";
   const metric =
     sig.signal === "sell"
       ? { value: sig.overval, prefix: "+" }
@@ -87,7 +98,25 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
         <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{pet.name}</p>
-          <p className="font-mono text-[11px] text-muted uppercase">{variantLabel}</p>
+          <p className="flex items-center gap-1 font-mono text-[11px] text-muted uppercase">
+            {variantLabel}
+            <span title="Procura/hype (Discord)" className="text-accent/80">
+              · 🔥{Math.round(hype)}
+            </span>
+            {infl && infl.inflation !== "fair" ? (
+              <span
+                title={
+                  infl.inflation === "overhyped"
+                    ? "Preço acima do justo em pontos — provavelmente inflacionado"
+                    : "Preço abaixo do justo em pontos — possível oportunidade"
+                }
+              >
+                <Badge tone={inflTone} className="px-1.5 py-0 text-[9px]">
+                  {infl.inflation === "overhyped" ? "INFLACIONADO" : "BARATO"}
+                </Badge>
+              </span>
+            ) : null}
+          </p>
         </div>
       </div>
 

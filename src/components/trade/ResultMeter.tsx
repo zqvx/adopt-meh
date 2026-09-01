@@ -1,4 +1,10 @@
-import { ArrowLeftRight, BookmarkPlus, ShieldAlert, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeftRight,
+  BookmarkPlus,
+  ShieldAlert,
+  ShieldCheck,
+  TrendingDown,
+} from "lucide-react";
 import { evaluateTrade, toRidePots } from "@/lib/pets/engine";
 import { formatMoney, formatPct, formatPoints } from "@/lib/format";
 import { useTradeStore } from "@/lib/store";
@@ -181,6 +187,18 @@ export function ResultMeter() {
           <p className="text-xs text-muted">{verdict.riskDetail}</p>
         </div>
       </div>
+
+      {verdict.downgrade ? (
+        <div className="mt-3 flex items-start gap-3 rounded-lg bg-warn-dim px-3 py-3">
+          <TrendingDown className="mt-0.5 size-4 shrink-0 text-warn" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-warn">
+              ⚠ Downgrade · armadilha de liquidez
+            </p>
+            <p className="text-xs text-muted">{verdict.downgradeDetail}</p>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

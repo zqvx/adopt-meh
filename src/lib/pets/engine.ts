@@ -16,6 +16,9 @@ function emptyTotals(): SideTotals {
     trashPoints: 0,
     trashNames: [],
     lowLiqCount: 0,
+    strongCount: 0,
+    concentration: 0,
+    avgDemand: 0,
   };
 }
 
@@ -33,6 +36,8 @@ export function lineValue(line: TradeLine) {
 export function summarizeSide(lines: TradeLine[]): SideTotals {
   const totals = emptyTotals();
   const trashSet = new Set<string>();
+  let maxLinePoints = 0;
+  let demandWeighted = 0;
   for (const line of lines) {
     const pet = getPet(line.petId);
     if (!pet) continue;
@@ -40,6 +45,12 @@ export function summarizeSide(lines: TradeLine[]): SideTotals {
     totals.points += value.points;
     totals.usd += value.usd;
     totals.count += line.qty;
+    maxLinePoints = Math.max(maxLinePoints, value.points);
+    demandWeighted += value.points * pet.demand;
+    const strong =
+      (pet.liquidity === "high" && pet.demand >= 4) ||
+      (pet.tier === "S" && pet.liquidity !== "low");
+    if (strong) totals.strongCount += line.qty;
     if (pet.liquidity === "trash") {
       totals.trashCount += line.qty;
       totals.trashPoints += value.points;
@@ -49,6 +60,8 @@ export function summarizeSide(lines: TradeLine[]): SideTotals {
     }
   }
   totals.trashNames = [...trashSet];
+  totals.concentration = totals.points > 0 ? maxLinePoints / totals.points : 0;
+  totals.avgDemand = totals.points > 0 ? demandWeighted / totals.points : 0;
   return totals;
 }
 
@@ -130,6 +143,27 @@ export function evaluateTrade(you: TradeLine[], them: TradeLine[]): TradeVerdict
     riskDetail = "O outro jogador ainda não tem itens na mesa.";
   }
 
+  // Downgrade: trocas poucos itens FORTES (teu lado) por muitos fracos (dele).
+  // O manómetro pode dizer "justa", mas ficas com ativos difíceis de voltar a
+  // trocar — é uma das armadilhas mais comuns.
+  let downgrade = false;
+  let downgradeDetail = "";
+  if (!empty) {
+    const youConcentrated =
+      youTot.concentration >= 0.6 && youTot.strongCount >= 1;
+    const manyItems = themTot.count - youTot.count >= 3;
+    const demandGap = youTot.avgDemand - themTot.avgDemand >= 0.7;
+    const themWeak =
+      themTot.strongCount === 0 || themTot.avgDemand < 3.1;
+    const roughlyFair = pct < 0.12; // não compensa se for lucro enorme
+    if (youConcentrated && manyItems && demandGap && themWeak && roughlyFair) {
+      downgrade = true;
+      downgradeDetail = `Dás ${youTot.count} item${youTot.count === 1 ? "" : "s"} de alta procura e recebes ${themTot.count} itens mais fracos. Em pontos parece ${
+        pct > -0.05 && pct < 0.05 ? "justo" : pct >= 0.05 ? "lucro" : "perda"
+      }, mas ficas com ativos difíceis de voltar a vender — é um downgrade. Pede um pet forte como add ou recusa.`;
+    }
+  }
+
   return {
     kind,
     label,
@@ -142,6 +176,8 @@ export function evaluateTrade(you: TradeLine[], them: TradeLine[]): TradeVerdict
     risk,
     riskLabel,
     riskDetail,
+    downgrade,
+    downgradeDetail,
   };
 }
 

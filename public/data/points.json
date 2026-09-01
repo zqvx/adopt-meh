@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "scrapedAt": "2026-09-01T00:00:00Z",
+    "unit": "catalog-points",
+    "source": "catalog-fallback",
+    "note": "Pontos FR do catálogo (fallback). Correr `npm run scrape:points` para substituir por pontos reais do ElveBredd e cruzar com o dinheiro."
+  },
+  "pets": {
+    "bat-dragon": 800,
+    "shadow-dragon": 480,
+    "giraffe": 340,
+    "frost-dragon": 240,
+    "owl": 230,
+    "parrot": 170,
+    "crow": 176,
+    "evil-unicorn": 110,
+    "african-wild-dog": 146,
+    "giant-panda": 140,
+    "balloon-unicorn": 210,
+    "arctic-reindeer": 64,
+    "cow": 1.8,
+    "turtle": 44,
+    "kangaroo": 36
+  }
+}
