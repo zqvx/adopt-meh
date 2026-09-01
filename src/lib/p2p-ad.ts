@@ -4,10 +4,12 @@ import {
   DEFAULT_COST_RATIO,
   decayPrice,
   goldenSpread,
+  multiCurrency,
   quickSell,
   siteNetEur,
   type Listing,
 } from "./p2p-pricing";
+import type { Customer } from "./crm-match";
 import type { Variant } from "./pets/types";
 
 /* ------------------------------------------------------------------ *
@@ -52,14 +54,17 @@ export function generateAd(listing: Listing, opts: AdOptions = {}): string {
   const total = price.eur * listing.qty;
   const savings = Math.max(0, listing.marketEur - price.eur) * listing.qty;
 
+  const money = multiCurrency(total);
+
   const lines = [
     `${STAGE_TAG[price.stage] ?? "💎"} · ${qty}${label} (Adopt Me)`,
     "",
-    `💰 Preço: ${eur(total)}${listing.qty > 1 ? ` (${eur(price.eur)}/un)` : ""}`,
+    // Preço nas 3 moedas: o comprador dos EUA/UK não tem de ir ao Google.
+    `💰 Preço: ${money.tag}${listing.qty > 1 ? ` (${eur(price.eur)}/un)` : ""}`,
     `📊 Valor de mercado: ${eur(listing.marketEur * listing.qty)}`,
     savings > 0 ? `✅ Poupas ${eur(savings)} face aos sites (sem taxas de marketplace)` : "",
     "",
-    `💳 Pagamento: Revolut${revtag ? ` (${revtag})` : ""} · instantâneo, sem taxas na UE`,
+    `💳 Pagamento: Revolut${revtag ? ` (${revtag})` : ""} — converte USD/GBP para EUR de graça`,
     `🤝 Entrega em jogo na hora, tu confirmas antes de pagar`,
     vouches > 0
       ? `⭐ ${vouches} ${vouches === 1 ? "vouch" : "vouches"} — recibos de todas as trocas`
@@ -86,6 +91,51 @@ export function marketEurFor(
   if (!pet) return 0;
   const usd = overrides[petId] ?? pet.values.fr.usd;
   return Math.round(usd * FX.EUR * 100) / 100;
+}
+
+
+/* ------------------------------------------------------------------ *
+ * DM privada para clientes antigos (Livro Negro)
+ * ------------------------------------------------------------------ */
+
+/** Nome do pet em inglês-neutro para a DM (o mercado é anglófono). */
+function adPetName(petId: string, variant: Variant) {
+  const pet = getPet(petId);
+  const name = pet?.name ?? petId;
+  if (!pet?.hasVariants) return name;
+  return `${variant.toUpperCase()} ${name}`;
+}
+
+/**
+ * Mensagem privada de venda prioritária. Vender a quem já te pagou uma vez
+ * é a venda mais barata que existe: sem scammers, sem canais públicos.
+ */
+export function privateDmText(
+  listing: Listing,
+  customer: Pick<Customer, "handle">,
+  opts: AdOptions = {},
+): string {
+  const price = decayPrice(listing, opts.now);
+  const money = multiCurrency(price.eur * listing.qty);
+  const qty = listing.qty > 1 ? `${listing.qty}x ` : "a ";
+  const item = adPetName(listing.petId, listing.variant);
+
+  return [
+    `Yo @${customer.handle} 👋`,
+    "",
+    `Just got ${qty}${item}. Giving you priority before I post it on the public channels.`,
+    `Price: ${money.tag} — Revolut (it auto-converts your USD/GBP to EUR for free).`,
+    price.stage !== "golden"
+      ? "Doing a quick flip on this one, so it's below my usual price."
+      : "Same clean trade as last time: you check the pet in-game first, then you pay.",
+    opts.vouches && opts.vouches > 0
+      ? `${opts.vouches} vouches so far, receipt for every trade.`
+      : "",
+    "",
+    "Want it? 🐾",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
 }
 
 /**

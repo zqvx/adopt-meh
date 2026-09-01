@@ -5,6 +5,7 @@ import {
   decayPrice,
   defaultCostEur,
   goldenSpread,
+  multiCurrency,
   quickSell,
   siteNetEur,
 } from "./p2p-pricing.ts";
@@ -72,4 +73,16 @@ test("daysListed conta dias inteiros e nunca é negativo", () => {
 test("valores inválidos não rebentam os preços", () => {
   assert.equal(goldenSpread(0), 0);
   assert.equal(quickSell(-10), 0);
+});
+
+test("câmbio do anúncio: 47 € → $52 | £40", () => {
+  const m = multiCurrency(47);
+  assert.equal(m.usd, 52);
+  assert.equal(m.gbp, 40);
+  assert.equal(m.tag, "47€ | $52 | £40");
+});
+
+test("câmbio mantém cêntimos no euro e arredonda as outras moedas", () => {
+  const m = multiCurrency(44.99);
+  assert.equal(m.tag, "44,99€ | $49 | £38");
 });

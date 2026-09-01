@@ -28,7 +28,10 @@ mercado 50 €  →  o site paga-te 44 €  →  tu vendes a 47 €
 | `src/components/panels/P2PCentral.tsx` | Separador **Central P2P**: caixa/reputação/pipeline, criar anúncio, cartões com anúncio pronto a copiar e botão “Vendido · recibo”. |
 | `src/components/panels/MorningBriefing.tsx` | Separador de arranque **Missão do Dia**: stock parado a despachar, alerta de pets a cair ≥3%, capital livre. |
 | `src/components/panels/StockSniper.tsx` | Cartões de deep links + teto de compra (usado no briefing e no separador Margem). |
-| `src/lib/p2p.test.ts` | 8 testes da tabela de preços e do decay. |
+| `src/lib/crm-match.ts` | Motor do **Livro Negro** (puro, testado): `normalizeHandle`, `isWhale`, `matchCustomers`, `withPurchase`, `topSpendEur`. |
+| `src/lib/crm.ts` | Store zustand `nexus-crm-v1` (localStorage): clientes, `recordSale`, notas. |
+| `src/lib/p2p.test.ts` | 10 testes da tabela de preços, do decay e do câmbio. |
+| `src/lib/crm.test.ts` | 8 testes do matching de clientes. |
 
 ## Ficheiros alterados
 
@@ -40,6 +43,35 @@ mercado 50 €  →  o site paga-te 44 €  →  tu vendes a 47 €
 - `src/components/panels/HistoryPanel.tsx` — botão de vouch por entrada
   (regista venda P2P, +1 vouch, descarrega o recibo).
 - `package.json` — `npm test` passou a incluir `src/lib/p2p.test.ts`.
+
+## Livro Negro (CRM de baleias)
+
+Quem paga 50 € hoje paga outra vez daqui a um mês — vender por DM a quem já
+confia em ti demora 30 segundos e não tem scammers.
+
+- Ao clicar em **“Vendido · recibo”** a app pede o **@ do comprador** e
+  guarda-o (o @ também vai no recibo). Sem @ a venda fecha na mesma.
+- O **Briefing Matinal** cruza o stock em anúncio com o histórico de compras e
+  mostra a secção **Mensagens diretas (VIPs)** com a DM pronta a copiar
+  (“Giving you priority before I post on public channels…”).
+- Prioridade do matching: já comprou este pet → compra nesta faixa de preço →
+  é baleia (≥40 € gastos ou ≥2 compras). Clientes parados há 30/60+ dias
+  perdem peso; itens muito acima do poder de compra não são sugeridos.
+- O separador **Central P2P** tem a lista de clientes ordenada por total gasto,
+  com selo de baleia, maior compra e dias desde a última.
+
+## Câmbio automático no anúncio (€ / $ / £)
+
+O mercado rico é americano e britânico. Se virem só “47 €”, a preguiça de ir
+converter mata a venda. Todos os preços gerados saem nas três moedas:
+
+```
+💰 Preço: 47€ | $52 | £40
+💳 Pagamento: Revolut — converte USD/GBP para EUR de graça
+```
+
+Multiplicadores fixos em `p2p-pricing.ts`: `EUR_TO_USD = 1,10`,
+`EUR_TO_GBP = 0,85` (conservadores de propósito — nunca pedes a menos).
 
 ## Tabela de preços
 
@@ -58,7 +90,7 @@ mercado 50 €  →  o site paga-te 44 €  →  tu vendes a 47 €
 - `eslint src` sem erros novos (mantêm-se 1 erro + 1 aviso pré-existentes em
   `src/lib/app-data/`).
 - `vite build` OK.
-- `node --test src/lib/p2p.test.ts` → **8/8**. Restante suite: as 8 falhas em
+- `node --test src/lib/p2p.test.ts src/lib/crm.test.ts` → **18/18**. Restante suite: as 8 falhas em
   `scripts/grok-pwa-plugin.test.mjs` já existiam antes desta branch.
 - SSR verificado no dev server: o briefing matinal renderiza no arranque.
 
@@ -66,6 +98,8 @@ mercado 50 €  →  o site paga-te 44 €  →  tu vendes a 47 €
 
 - O custo por defeito de uma listagem é `0,55 × valor de mercado`; o campo
   “Quanto te custou” já permite indicar o valor exato para um break-even real.
+- O câmbio é fixo por opção (simples e conservador); dá para o ligar a uma API
+  de FX se algum dia as moedas se afastarem muito.
 - Os valores de mercado vêm de `values.json`; com o scraper ativo (cron 6h)
   ficam mais precisos, e os preços por plataforma passam a ordenar os deep
   links do Stock Sniper.

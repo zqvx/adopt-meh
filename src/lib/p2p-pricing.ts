@@ -149,3 +149,33 @@ export function listingProfitEur(listing: Listing, now = Date.now()) {
   return round2((price - listing.costEur) * listing.qty);
 }
 
+/* ------------------------------------------------------------------ *
+ * Câmbio para o anúncio (USD/GBP)
+ * ------------------------------------------------------------------ */
+
+/**
+ * 80% dos compradores ricos de Adopt Me estão nos EUA e no Reino Unido. Se
+ * só virem "47 €", a preguiça de ir converter mata a venda. Multiplicadores
+ * fixos e conservadores — o Revolut converte de graça à entrada.
+ */
+export const EUR_TO_USD = 1.1;
+export const EUR_TO_GBP = 0.85;
+
+export interface MultiCurrency {
+  eur: number;
+  usd: number;
+  gbp: number;
+  /** Etiqueta pronta para o anúncio: `47€ | $52 | £40`. */
+  tag: string;
+}
+
+/** Converte um preço em € para as três moedas do anúncio (arredondado). */
+export function multiCurrency(eurValue: number): MultiCurrency {
+  const eur = round2(Math.max(0, eurValue));
+  const usd = Math.round(eur * EUR_TO_USD);
+  const gbp = Math.round(eur * EUR_TO_GBP);
+  const eurLabel = Number.isInteger(eur)
+    ? `${eur}€`
+    : `${eur.toFixed(2).replace(".", ",")}€`;
+  return { eur, usd, gbp, tag: `${eurLabel} | $${usd} | £${gbp}` };
+}
