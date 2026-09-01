@@ -114,6 +114,38 @@ com o score de procura 🔥 que o feed mostra.
 
 ---
 
+## Resolução de problemas — o INICIAR.bat abre e fecha logo
+
+Se a janela preta pisca e desaparece sem escrever nada, é quase sempre uma
+destas três coisas:
+
+1. **O ficheiro veio com as mudanças de linha erradas (a causa mais comum).**
+   Um `.bat` gravado no formato Unix (LF) não é lido pelo `cmd.exe`: ele não
+   percebe os blocos `if (...)` nem os `goto`, e fecha na hora. Já está
+   corrigido no repositório (`.gitattributes` força CRLF nos `.bat`), mas se
+   tens uma **cópia antiga**, volta a descarregar o ZIP ou faz `git pull`.
+   Para confirmar: abre o `INICIAR.bat` no **Bloco de Notas** — se todo o
+   texto aparecer numa só linha gigante, é esse o problema.
+
+2. **O INICIAR.bat está fora da pasta do projeto.** Ele tem de estar ao lado
+   do `package.json`. A versão nova já avisa em vez de fechar.
+
+3. **Queres ver a mensagem de erro à força.** Abre o `cmd`, arrasta o
+   `INICIAR.bat` para dentro da janela e prime Enter — assim a janela nunca
+   se fecha. A versão nova também escreve um `iniciar-log.txt` na pasta.
+
+Em último caso, arranca à mão (funciona sempre):
+
+```
+cd C:\caminho\para\adopt-meh
+npm install
+npm run dev
+```
+
+E abre http://localhost:8080 no navegador.
+
+---
+
 ## Notas
 
 - Tudo corre **no teu navegador**, sem conta nem login.
