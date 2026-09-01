@@ -138,22 +138,44 @@ export type Inflation = "overhyped" | "fair" | "undervalued";
  * do catálogo (ElveBredd). Pets cujo $/ponto desvia muito da mediana estão
  * inflacionados (overhyped) ou baratos (oportunidade).
  */
-export function inflationFor(
-  petId: string,
-  data: MarketData | null,
-  points: number,
-): { inflation: Inflation; ratio: number; medianRatio: number } | null {
-  if (!data?.pets) return null;
-  // Mediana do $/ponto entre todos os pets com as duas fontes.
+/**
+ * Mediana do $/ponto entre todos os pets com as duas fontes — a referência
+ * com que se diz se um item está caro ou barato.
+ *
+ * Corria inteira por cada linha da tabela, a cada tick de 2,4 s: eram ~109
+ * ordenações de ~109 elementos por render. Agora fica em cache por objeto de
+ * dados (`WeakMap`), que é novo em cada scraping — a entrada antiga sai sozinha
+ * quando ninguém a referencia, sem gestão de tamanho.
+ */
+const medianCache = new WeakMap<object, number>();
+
+export function medianUsdPerPoint(data: MarketData | null): number {
+  if (!data?.pets) return 0;
+  const cached = medianCache.get(data.pets);
+  if (cached !== undefined) return cached;
+
   const ratios: number[] = [];
   for (const [id, row] of Object.entries(data.pets)) {
     const frUsd = row.frUsd;
     const petPts = getPet(id)?.values.fr.points ?? 0;
     if (frUsd && petPts > 0) ratios.push(frUsd / petPts);
   }
-  if (ratios.length < 5) return null;
+  if (ratios.length < 5) return 0;
+
   ratios.sort((a, b) => a - b);
   const medianRatio = ratios[Math.floor(ratios.length / 2)];
+  medianCache.set(data.pets, medianRatio);
+  return medianRatio;
+}
+
+export function inflationFor(
+  petId: string,
+  data: MarketData | null,
+  points: number,
+): { inflation: Inflation; ratio: number; medianRatio: number } | null {
+  if (!data?.pets) return null;
+  const medianRatio = medianUsdPerPoint(data);
+  if (!medianRatio) return null;
   const thisPts = points > 0 ? points : getPet(petId)?.values.fr.points ?? 0;
   const frUsd = data.pets[petId]?.frUsd;
   if (!frUsd || thisPts <= 0) return null;

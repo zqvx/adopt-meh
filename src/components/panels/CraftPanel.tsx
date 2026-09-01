@@ -7,7 +7,6 @@ import {
   rankCrafts,
   rateCraft,
   readyFromInventory,
-  POTION_COST_USD,
   type CraftKind,
 } from "@/lib/pets/craft";
 import { FX, formatMoney, VARIANT_SHORT } from "@/lib/format";
@@ -310,9 +309,11 @@ export function CraftPanel() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] text-faint">Poções (F+R)</dt>
+                    <dt className="text-[11px] text-faint">
+                      Poções (F+R{eco.kind === "mfr" ? " × 4 néons" : ""})
+                    </dt>
                     <dd className="tabular-nums">
-                      {formatMoney(POTION_COST_USD, currency)}
+                      {formatMoney(eco.potionUsd, currency)}
                     </dd>
                   </div>
                   <div>

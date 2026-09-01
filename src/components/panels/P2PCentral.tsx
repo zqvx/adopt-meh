@@ -8,7 +8,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PetGlyph } from "@/components/trade/PetGlyph";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -210,6 +210,16 @@ function ListingCard({ listing }: { listing: Listing }) {
   const markSold = useP2PStore((s) => s.markSold);
   const removeListing = useP2PStore((s) => s.removeListing);
   const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<number | null>(null);
+
+  // Sem isto, fechar o cartaz antes dos 1,6 s deixava um `setState` a correr
+  // num componente já desmontado (e o timer pendurado).
+  useEffect(
+    () => () => {
+      if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
+    },
+    [],
+  );
 
   const pet = getPet(listing.petId);
   const price = decayPrice(listing);
@@ -285,7 +295,12 @@ function ListingCard({ listing }: { listing: Listing }) {
               onClick={() => {
                 void navigator.clipboard?.writeText(ad);
                 setCopied(true);
-                window.setTimeout(() => setCopied(false), 1600);
+                if (copyTimer.current !== null)
+                  window.clearTimeout(copyTimer.current);
+                copyTimer.current = window.setTimeout(() => {
+                  copyTimer.current = null;
+                  setCopied(false);
+                }, 1600);
               }}
             >
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
