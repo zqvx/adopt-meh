@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { FEATURED_PETS, getPet } from "@/lib/pets/catalog";
+import { getPet } from "@/lib/pets/catalog";
 import { evaluateTrade } from "@/lib/pets/engine";
 import type { Currency, TradeLine, TradeSide, Variant } from "@/lib/pets/types";
 import { uid } from "@/lib/utils";
@@ -197,22 +197,15 @@ export const useTradeStore = create<AppState>((set, get) => ({
     const resolved: Variant = pet.hasVariants ? variant : "regular";
     set((state) => {
       const current = sideOf(state, side);
-      const existing = current.find(
-        (line) => line.petId === petId && line.variant === resolved,
-      );
+      const existing = current.find((line) => line.petId === petId && line.variant === resolved);
       if (existing) {
         return setSide(
           state,
           side,
-          current.map((line) =>
-            line.id === existing.id ? { ...line, qty: line.qty + 1 } : line,
-          ),
+          current.map((line) => (line.id === existing.id ? { ...line, qty: line.qty + 1 } : line)),
         );
       }
-      return setSide(state, side, [
-        ...current,
-        { id: uid(), petId, variant: resolved, qty: 1 },
-      ]);
+      return setSide(state, side, [...current, { id: uid(), petId, variant: resolved, qty: 1 }]);
     });
   },
   removeLine: (side, id) => {
@@ -230,9 +223,7 @@ export const useTradeStore = create<AppState>((set, get) => ({
       setSide(
         state,
         side,
-        sideOf(state, side).map((line) =>
-          line.id === id ? { ...line, qty: next } : line,
-        ),
+        sideOf(state, side).map((line) => (line.id === id ? { ...line, qty: next } : line)),
       ),
     );
   },
@@ -241,9 +232,7 @@ export const useTradeStore = create<AppState>((set, get) => ({
       setSide(
         state,
         side,
-        sideOf(state, side).map((line) =>
-          line.id === id ? { ...line, variant } : line,
-        ),
+        sideOf(state, side).map((line) => (line.id === id ? { ...line, variant } : line)),
       ),
     );
   },
@@ -256,10 +245,7 @@ export const useTradeStore = create<AppState>((set, get) => ({
     set((state) => ({ you: state.them, them: state.you }));
   },
   loadExample: () => {
-    const frost = FEATURED_PETS.find((p) => p.id === "frost-dragon");
-    const owl = getPet("owl");
-    const crow = getPet("crow");
-    if (!frost || !owl || !crow) return;
+    // Troca de demonstração: 1 Shadow vs. trio Frost+Owl+Crow (veredito claro).
     set({
       you: [{ id: uid(), petId: "shadow-dragon", variant: "fr", qty: 1 }],
       them: [
@@ -330,17 +316,10 @@ export const useTradeStore = create<AppState>((set, get) => ({
     if (!pet) return;
     const resolved: Variant = pet.hasVariants ? variant : "regular";
     set((state) => {
-      const existing = state.inventory.find(
-        (it) => it.petId === petId && it.variant === resolved,
-      );
+      const existing = state.inventory.find((it) => it.petId === petId && it.variant === resolved);
       const inventory = existing
-        ? state.inventory.map((it) =>
-            it.id === existing.id ? { ...it, qty: it.qty + 1 } : it,
-          )
-        : [
-            ...state.inventory,
-            { id: uid(), petId, variant: resolved, qty: 1 },
-          ];
+        ? state.inventory.map((it) => (it.id === existing.id ? { ...it, qty: it.qty + 1 } : it))
+        : [...state.inventory, { id: uid(), petId, variant: resolved, qty: 1 }];
       persistInventory(inventory);
       return { inventory };
     });
@@ -392,18 +371,13 @@ export const useTradeStore = create<AppState>((set, get) => ({
 
       // Junta o resultado (néon/mega) ao inventário.
       const resultVariant: Variant = kind;
-      const existing = inventory.find(
-        (it) => it.petId === petId && it.variant === resultVariant,
-      );
+      const existing = inventory.find((it) => it.petId === petId && it.variant === resultVariant);
       if (existing) {
         inventory = inventory.map((it) =>
           it.id === existing.id ? { ...it, qty: it.qty + 1 } : it,
         );
       } else {
-        inventory = [
-          ...inventory,
-          { id: uid(), petId, variant: resultVariant, qty: 1 },
-        ];
+        inventory = [...inventory, { id: uid(), petId, variant: resultVariant, qty: 1 }];
       }
 
       persistInventory(inventory);
@@ -425,16 +399,16 @@ export const useTradeStore = create<AppState>((set, get) => ({
             (it) => it.petId === line.petId && it.variant === variant,
           );
           if (existing) {
-            inventory = inventory.map((it) =>
-              it.id === existing.id
-                ? {
-                    ...it,
-                    qty: receiving
-                      ? it.qty + line.qty
-                      : Math.max(0, it.qty - line.qty),
-                  }
-                : it,
-            ).filter((it) => it.qty > 0);
+            inventory = inventory
+              .map((it) =>
+                it.id === existing.id
+                  ? {
+                      ...it,
+                      qty: receiving ? it.qty + line.qty : Math.max(0, it.qty - line.qty),
+                    }
+                  : it,
+              )
+              .filter((it) => it.qty > 0);
           } else if (receiving) {
             inventory.push({ id: uid(), petId: line.petId, variant, qty: line.qty });
           }

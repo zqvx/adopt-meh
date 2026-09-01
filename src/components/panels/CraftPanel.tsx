@@ -43,9 +43,9 @@ function BestCrafts({ kind }: { kind: CraftKind }) {
   // Candidatos: pets com variantes e liquidez média+ (não trash/low).
   const candidates = useMemo(
     () =>
-      PETS.filter(
-        (p) => p.hasVariants && p.liquidity !== "trash" && p.liquidity !== "low",
-      ).map((p) => p.id),
+      PETS.filter((p) => p.hasVariants && p.liquidity !== "trash" && p.liquidity !== "low").map(
+        (p) => p.id,
+      ),
     [],
   );
   const ranked = useMemo(
@@ -56,8 +56,7 @@ function BestCrafts({ kind }: { kind: CraftKind }) {
   return (
     <div className="overflow-hidden rounded-xl bg-surface shadow-[var(--shadow-border)]">
       <p className="border-b border-line px-4 py-2 font-mono text-[10px] tracking-wide text-faint uppercase">
-        Melhores flips {kind === "nfr" ? "Néon (NFR)" : "Mega (MFR)"} · por teto de
-        compra
+        Melhores flips {kind === "nfr" ? "Néon (NFR)" : "Mega (MFR)"} · por teto de compra
       </p>
       {ranked.map((eco) => {
         const { rating, label } = rateCraft(eco);
@@ -71,9 +70,7 @@ function BestCrafts({ kind }: { kind: CraftKind }) {
               <p className="truncate text-sm font-medium">{eco.pet.name}</p>
               <p className="font-mono text-[11px] text-muted">
                 vende {formatMoney(eco.netUsd, currency)} líq. · teto/pet{" "}
-                <span className="text-accent">
-                  {formatMoney(eco.breakEvenBaseUsd, currency)}
-                </span>
+                <span className="text-accent">{formatMoney(eco.breakEvenBaseUsd, currency)}</span>
               </p>
             </div>
             <Badge tone={ratingTone(rating)}>{label}</Badge>
@@ -138,9 +135,7 @@ function CraftReadySection() {
                   tens {r.qty}× ·{" "}
                   {r.canMega
                     ? `dá ${r.megas} mega${r.megas > 1 ? "s" : ""}${
-                        r.neons - r.megas * 4 > 0
-                          ? ` + ${r.neons - r.megas * 4} néon`
-                          : ""
+                        r.neons - r.megas * 4 > 0 ? ` + ${r.neons - r.megas * 4} néon` : ""
                       }`
                     : r.canNeon
                       ? `dá ${r.neons} néon${r.neons > 1 ? "s" : ""}`
@@ -207,8 +202,7 @@ export function CraftPanel() {
 
   // Preço base que o utilizador diz conseguir (vazio = preço de mercado regular).
   const baseNum = Number.parseFloat(basePrice.replace(",", ".")) || 0;
-  const myBaseUsd =
-    baseNum > 0 ? baseNum / FX[currency] : (eco?.baseMarketUsd ?? 0);
+  const myBaseUsd = baseNum > 0 ? baseNum / FX[currency] : (eco?.baseMarketUsd ?? 0);
   const myTotalCost = eco ? myBaseUsd * eco.baseCount + eco.potionUsd : 0;
   const myProfit = eco ? eco.netUsd - myTotalCost : 0;
   const myRoi = myTotalCost > 0 ? myProfit / myTotalCost : 0;
@@ -225,9 +219,9 @@ export function CraftPanel() {
           Calculadora Néon / Mega
         </h2>
         <p className="text-sm text-muted">
-          Diz-te o <strong>máximo a pagar por cada pet base</strong> para craftar um
-          néon/mega e vender com lucro depois da taxa de {feePct.toFixed(0)}%. Tudo em
-          dinheiro real (não robux).
+          Diz-te o <strong>máximo a pagar por cada pet base</strong> para craftar um néon/mega e
+          vender com lucro depois da taxa de {feePct.toFixed(0)}%. Tudo em dinheiro real (não
+          robux).
         </p>
       </div>
 
@@ -298,9 +292,7 @@ export function CraftPanel() {
                 <dl className="mt-4 grid grid-cols-2 gap-3 font-mono text-sm">
                   <div>
                     <dt className="text-[11px] text-faint">Venda (ref.)</dt>
-                    <dd className="tabular-nums">
-                      {formatMoney(eco.sellUsd, currency)}
-                    </dd>
+                    <dd className="tabular-nums">{formatMoney(eco.sellUsd, currency)}</dd>
                   </div>
                   <div>
                     <dt className="text-[11px] text-faint">Venda líq. após taxa</dt>
@@ -312,15 +304,11 @@ export function CraftPanel() {
                     <dt className="text-[11px] text-faint">
                       Poções (F+R{eco.kind === "mfr" ? " × 4 néons" : ""})
                     </dt>
-                    <dd className="tabular-nums">
-                      {formatMoney(eco.potionUsd, currency)}
-                    </dd>
+                    <dd className="tabular-nums">{formatMoney(eco.potionUsd, currency)}</dd>
                   </div>
                   <div>
                     <dt className="text-[11px] text-faint">Preço base de mercado</dt>
-                    <dd className="tabular-nums">
-                      {formatMoney(eco.baseMarketUsd, currency)}
-                    </dd>
+                    <dd className="tabular-nums">{formatMoney(eco.baseMarketUsd, currency)}</dd>
                   </div>
                 </dl>
 
@@ -344,8 +332,8 @@ export function CraftPanel() {
                           : "text-loss",
                     )}
                   >
-                    Não pagues mais de{" "}
-                    {formatMoney(eco.breakEvenBaseUsd, currency)} por cada pet base
+                    Não pagues mais de {formatMoney(eco.breakEvenBaseUsd, currency)} por cada pet
+                    base
                   </p>
                   <p className="mt-0.5 text-xs text-muted">{rating.hint}</p>
                 </div>
@@ -402,9 +390,7 @@ export function CraftPanel() {
                 </div>
               </>
             ) : (
-              <p className="mt-3 text-sm text-muted">
-                Este item não tem variantes de néon/mega.
-              </p>
+              <p className="mt-3 text-sm text-muted">Este item não tem variantes de néon/mega.</p>
             )}
           </div>
         </div>
@@ -427,7 +413,7 @@ export function CraftPanel() {
             </ul>
             <p className="mt-3 flex items-start gap-1.5 rounded-md bg-bg-sunken px-3 py-2 text-[11px] text-muted">
               <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-warn" />
-              Valores de referência em dinheiro (BloxUltra/Eldorado set. 2026).
+              Valores de referência em dinheiro (BloxUltra/Eldorado), renovados pelo scraping.
               Cross-trading por dinheiro real viola os Termos do Roblox.
             </p>
           </div>
