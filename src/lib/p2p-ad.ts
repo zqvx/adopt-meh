@@ -1,5 +1,5 @@
 import { getPet } from "./pets/catalog";
-import { FX, VARIANT_LABEL } from "./format";
+import { FX } from "./format";
 import {
   DEFAULT_COST_RATIO,
   decayPrice,
@@ -25,58 +25,99 @@ export interface AdOptions {
 }
 
 const STAGE_TAG: Record<string, string> = {
-  golden: "💎 PREÇO DE AMIGO",
-  quick: "⚡ VENDA RÁPIDA (hoje)",
-  breakeven: "🔥 AO CUSTO — última chamada",
+  golden: "💎 FRIEND PRICE",
+  quick: "⚡ QUICK SALE (today only)",
+  breakeven: "🔥 AT COST — last call",
 };
 
-function eur(n: number) {
-  return `${n.toFixed(2).replace(".", ",")} €`;
-}
+/** Emoji do pet para a primeira linha do anúncio (é o que trava o scroll). */
+const EMOJI_RULES: [RegExp, string][] = [
+  [/dragon|dino|raptor|rex/i, "🐉"],
+  [/unicorn|pegasus/i, "🦄"],
+  [/owl|parrot|crow|toucan|flamingo|penguin|chicken|turkey/i, "🦉"],
+  [/cat|lion|tiger|panther|lynx|cheetah/i, "🐱"],
+  [/dog|wolf|fox|husky|corgi|shiba/i, "🐶"],
+  [/bear|panda|koala/i, "🐻"],
+  [/turtle|frog|crocodile|snake|lizard/i, "🐢"],
+  [/monkey|kangaroo|elephant|giraffe|zebra|rhino|hippo/i, "🐘"],
+  [/shark|whale|octopus|axolotl|narwhal|crab|fish/i, "🐬"],
+  [/bat|ghost|skele|zombie|evil|shadow/i, "🦇"],
+  [/butterfly|bee|ladybug|snail|beetle/i, "🦋"],
+  [/potion|egg/i, "🥚"],
+];
 
-function petLabel(petId: string, variant: Variant) {
+function petEmoji(petId: string) {
   const pet = getPet(petId);
-  const name = pet?.name ?? petId;
-  if (!pet?.hasVariants) return name;
-  return `${name} ${VARIANT_LABEL[variant]}`;
+  const haystack = `${pet?.name ?? petId} ${pet?.aliases?.join(" ") ?? ""}`;
+  for (const [re, emoji] of EMOJI_RULES) {
+    if (re.test(haystack)) return emoji;
+  }
+  return "🐾";
 }
 
 /**
- * Texto de anúncio copy-paste. Mostra o preço de mercado riscado, o preço
- * de hoje (já com decay) e a poupança face ao marketplace — é o argumento
- * que fecha a venda.
+ * Nome do item como o mercado o escreve: `MFR Shadow Dragon`. A variante vem
+ * à frente porque é assim que se procura e se fala em inglês.
+ */
+export function adPetName(petId: string, variant: Variant) {
+  const pet = getPet(petId);
+  const name = pet?.name ?? petId;
+  if (!pet?.hasVariants || variant === "regular") return name;
+  return `${variant.toUpperCase()} ${name}`;
+}
+
+/** A primeira linha do anúncio: `🐉 MFR Shadow Dragon ➔ 47€ | $52 | £40`. */
+export function adHeadline(
+  petId: string,
+  variant: Variant,
+  totalEur: number,
+  qty = 1,
+): string {
+  const prefix = qty > 1 ? `${qty}x ` : "";
+  return `${petEmoji(petId)} ${prefix}${adPetName(petId, variant)} ➔ ${
+    multiCurrency(totalEur).tag
+  }`;
+}
+
+/** Linha de pagamento — o argumento que convence o comprador estrangeiro. */
+export const PAYMENT_LINE =
+  "💳 Payment: Revolut (Revolut auto-converts your USD/GBP to EUR for free!)";
+
+/**
+ * Texto de anúncio copy-paste, em inglês (o mercado com dinheiro é dos EUA e
+ * do Reino Unido). Mostra o preço nas três moedas, o valor de mercado e a
+ * poupança face aos marketplaces — é o argumento que fecha a venda.
  */
 export function generateAd(listing: Listing, opts: AdOptions = {}): string {
   const { vouches = 0, revtag, now } = opts;
   const price = decayPrice(listing, now);
-  const label = petLabel(listing.petId, listing.variant);
-  const qty = listing.qty > 1 ? `${listing.qty}× ` : "";
   const total = price.eur * listing.qty;
-  const savings = Math.max(0, listing.marketEur - price.eur) * listing.qty;
+  const marketTotal = listing.marketEur * listing.qty;
+  const savings = Math.max(0, marketTotal - total);
 
-  const money = multiCurrency(total);
-
-  const lines = [
-    `${STAGE_TAG[price.stage] ?? "💎"} · ${qty}${label} (Adopt Me)`,
+  // `null` = linha que não se aplica (some); "" = linha em branco de propósito.
+  const lines: (string | null)[] = [
+    STAGE_TAG[price.stage] ?? "💎",
     "",
-    // Preço nas 3 moedas: o comprador dos EUA/UK não tem de ir ao Google.
-    `💰 Preço: ${money.tag}${listing.qty > 1 ? ` (${eur(price.eur)}/un)` : ""}`,
-    `📊 Valor de mercado: ${eur(listing.marketEur * listing.qty)}`,
-    savings > 0 ? `✅ Poupas ${eur(savings)} face aos sites (sem taxas de marketplace)` : "",
+    adHeadline(listing.petId, listing.variant, total, listing.qty),
+    `📊 Market value: ${multiCurrency(marketTotal).tag}`,
+    savings > 0
+      ? `✅ You save ${multiCurrency(savings).eur}€ vs the marketplaces (no site fees)`
+      : null,
     "",
-    `💳 Pagamento: Revolut${revtag ? ` (${revtag})` : ""} — converte USD/GBP para EUR de graça`,
-    `🤝 Entrega em jogo na hora, tu confirmas antes de pagar`,
+    revtag ? `${PAYMENT_LINE.slice(0, -1)} · ${revtag})` : PAYMENT_LINE,
+    "🤝 In-game delivery, you check the pet before you pay",
     vouches > 0
-      ? `⭐ ${vouches} ${vouches === 1 ? "vouch" : "vouches"} — recibos de todas as trocas`
-      : `⭐ Primeiras trocas: aceito ir a meias (metade antes, metade depois)`,
+      ? `⭐ ${vouches} ${vouches === 1 ? "vouch" : "vouches"} — receipt for every trade`
+      : "⭐ First trades: happy to split it (half before, half after)",
     price.stage !== "golden"
-      ? `⏳ Este preço é só hoje — depois volta ao valor de tabela.`
-      : "",
+      ? "⏳ This price is today only — after that it goes back to market value."
+      : null,
     "",
-    `DM aberta 📩`,
+    "DMs open 📩",
   ];
 
-  return lines.filter((l) => l !== "").join("\n");
+  return lines.filter((l): l is string => l !== null).join("\n");
 }
 
 /**
@@ -98,14 +139,6 @@ export function marketEurFor(
  * DM privada para clientes antigos (Livro Negro)
  * ------------------------------------------------------------------ */
 
-/** Nome do pet em inglês-neutro para a DM (o mercado é anglófono). */
-function adPetName(petId: string, variant: Variant) {
-  const pet = getPet(petId);
-  const name = pet?.name ?? petId;
-  if (!pet?.hasVariants) return name;
-  return `${variant.toUpperCase()} ${name}`;
-}
-
 /**
  * Mensagem privada de venda prioritária. Vender a quem já te pagou uma vez
  * é a venda mais barata que existe: sem scammers, sem canais públicos.
@@ -116,26 +149,28 @@ export function privateDmText(
   opts: AdOptions = {},
 ): string {
   const price = decayPrice(listing, opts.now);
-  const money = multiCurrency(price.eur * listing.qty);
   const qty = listing.qty > 1 ? `${listing.qty}x ` : "a ";
   const item = adPetName(listing.petId, listing.variant);
 
-  return [
+  const lines: (string | null)[] = [
     `Yo @${customer.handle} 👋`,
     "",
     `Just got ${qty}${item}. Giving you priority before I post it on the public channels.`,
-    `Price: ${money.tag} — Revolut (it auto-converts your USD/GBP to EUR for free).`,
+    "",
+    adHeadline(listing.petId, listing.variant, price.eur * listing.qty, listing.qty),
+    PAYMENT_LINE,
+    "",
     price.stage !== "golden"
       ? "Doing a quick flip on this one, so it's below my usual price."
       : "Same clean trade as last time: you check the pet in-game first, then you pay.",
     opts.vouches && opts.vouches > 0
-      ? `${opts.vouches} vouches so far, receipt for every trade.`
-      : "",
+      ? `⭐ ${opts.vouches} vouches so far, receipt for every trade.`
+      : null,
     "",
     "Want it? 🐾",
-  ]
-    .filter((l) => l !== "")
-    .join("\n");
+  ];
+
+  return lines.filter((l): l is string => l !== null).join("\n");
 }
 
 /**

@@ -24,6 +24,7 @@ import { generateP2PReceipt } from "@/lib/p2p-receipt";
 import {
   daysListed,
   decayPrice,
+  multiCurrency,
   defaultCostEur,
   listingProfitEur,
   useP2PStore,
@@ -159,6 +160,10 @@ function AddListing() {
             </label>
           </div>
 
+          <p className="rounded-lg bg-accent-dim px-3 py-2 font-mono text-[11px] text-accent">
+            Anúncio sai como: {multiCurrency(ladder.goldenEur * qty).tag}
+          </p>
+
           <div className="grid grid-cols-2 gap-2 rounded-lg bg-bg-sunken p-3 sm:grid-cols-4">
             {[
               { k: "Mercado", v: ladder.marketEur, tone: "text-muted" },
@@ -249,6 +254,11 @@ function ListingCard({ listing }: { listing: Listing }) {
         </div>
         <div className="shrink-0 text-right">
           <p className="font-mono text-base text-fg tabular-nums">{eur(total)}</p>
+          {!sold ? (
+            <p className="font-mono text-[10px] text-faint tabular-nums">
+              ${multiCurrency(total).usd} · £{multiCurrency(total).gbp}
+            </p>
+          ) : null}
           <Badge tone={sold ? "neutral" : STAGE_TONE[price.stage]}>
             {sold ? "vendido" : price.label}
           </Badge>

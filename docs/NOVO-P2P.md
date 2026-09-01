@@ -63,15 +63,27 @@ confia em ti demora 30 segundos e não tem scammers.
 ## Câmbio automático no anúncio (€ / $ / £)
 
 O mercado rico é americano e britânico. Se virem só “47 €”, a preguiça de ir
-converter mata a venda. Todos os preços gerados saem nas três moedas:
+converter mata a venda — por isso o anúncio é gerado **em inglês** e com as
+três moedas na primeira linha:
 
 ```
-💰 Preço: 47€ | $52 | £40
-💳 Pagamento: Revolut — converte USD/GBP para EUR de graça
+💎 FRIEND PRICE
+
+🐉 MFR Shadow Dragon ➔ 47€ | $52 | £40
+📊 Market value: 55€ | $61 | £47
+✅ You save 8€ vs the marketplaces (no site fees)
+
+💳 Payment: Revolut (Revolut auto-converts your USD/GBP to EUR for free!)
+🤝 In-game delivery, you check the pet before you pay
+⭐ 12 vouches — receipt for every trade
+
+DMs open 📩
 ```
 
 Multiplicadores fixos em `p2p-pricing.ts`: `EUR_TO_USD = 1,10`,
 `EUR_TO_GBP = 0,85` (conservadores de propósito — nunca pedes a menos).
+`adHeadline()` monta a primeira linha (emoji do pet + variante + 3 moedas) e é
+partilhada pelo anúncio público e pela DM privada do Livro Negro.
 
 ## Tabela de preços
 
@@ -90,7 +102,11 @@ Multiplicadores fixos em `p2p-pricing.ts`: `EUR_TO_USD = 1,10`,
 - `eslint src` sem erros novos (mantêm-se 1 erro + 1 aviso pré-existentes em
   `src/lib/app-data/`).
 - `vite build` OK.
-- `node --test src/lib/p2p.test.ts src/lib/crm.test.ts` → **18/18**. Restante suite: as 8 falhas em
+- `npm run test:app` → **50/50** (inclui os 18 novos: preços, câmbio e CRM).
+  O `npm test` passou a correr os testes da app **primeiro**, porque as 8
+  falhas pré-existentes em `scripts/grok-pwa-plugin.test.mjs` (o título de
+  `og:title` mudou quando a app foi rebatizada NEXUS) cortavam a cadeia `&&`
+  e impediam a suite de `src/` de sequer arrancar. Restante suite: as 8 falhas em
   `scripts/grok-pwa-plugin.test.mjs` já existiam antes desta branch.
 - SSR verificado no dev server: o briefing matinal renderiza no arranque.
 
