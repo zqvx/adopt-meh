@@ -42,12 +42,11 @@ else
   echo "[OK] Dependências prontas."
 fi
 
-# 4. Abrir o navegador e arrancar
+# 4. Arrancar. O lançador é que escolhe a porta e só abre o navegador quando o
+#    servidor responder de facto (nada de "esperar 6 segundos à sorte").
 echo
-echo "[..] A arrancar em http://localhost:8080 (Ctrl+C para parar)..."
+echo "[..] A arrancar... o navegador abre no endereço que aparecer abaixo."
 echo "    Os preços são buscados em direto aos sites (atualizam sozinhos)."
 echo
-( sleep 6; (command -v xdg-open >/dev/null && xdg-open http://localhost:8080) || \
-  (command -v open >/dev/null && open http://localhost:8080) || true ) &
 
-npm run dev
+node scripts/iniciar.mjs

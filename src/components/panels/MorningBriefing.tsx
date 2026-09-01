@@ -1,5 +1,5 @@
 import { ArrowRight, Coffee, Flame, TrendingDown, Wallet } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PetGlyph } from "@/components/trade/PetGlyph";
 import { StockSniper } from "@/components/panels/StockSniper";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,11 @@ function eur(n: number) {
   return `${n.toFixed(2).replace(".", ",")} €`;
 }
 
-function greeting(hour: number) {
+function greeting(hour: number | null) {
+  // `null` = ainda não sabemos as horas (servidor, ou primeiro render no
+  // cliente): fica neutro para não destoar entre os dois e dar erro de
+  // hidratação.
+  if (hour === null) return "Olá";
   if (hour < 6) return "Boa madrugada";
   if (hour < 13) return "Bom dia";
   if (hour < 20) return "Boa tarde";
@@ -43,7 +47,12 @@ export function MorningBriefing() {
     hydrate();
   }, [hydrate]);
 
-  const active = listings.filter((l) => l.status === "active");
+  // Depende de `listings` (e não do `active` calculado em baixo): como `active`
+  // é um array novo a cada render, o `useMemo` nunca acertava na cache.
+  const active = useMemo(
+    () => listings.filter((l) => l.status === "active"),
+    [listings],
+  );
 
   /** Stock parado: já saiu da janela golden (dia 4+) — tem de sair hoje. */
   const stale = useMemo(
@@ -84,8 +93,13 @@ export function MorningBriefing() {
     [inventory],
   );
 
-  const toCollect = active.reduce((s, l) => s + decayPrice(l).eur * l.qty, 0);
-  const hour = new Date().getHours();
+  const toCollect = useMemo(
+    () => active.reduce((s, l) => s + decayPrice(l).eur * l.qty, 0),
+    [active],
+  );
+  // Só no cliente: no servidor não há "hora de abrir a app".
+  const [hour, setHour] = useState<number | null>(null);
+  useEffect(() => setHour(new Date().getHours()), []);
 
   return (
     <div className="flex flex-col gap-4">

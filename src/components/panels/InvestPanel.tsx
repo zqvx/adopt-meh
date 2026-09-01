@@ -6,7 +6,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getPet, searchPets, variantsFor } from "@/lib/pets/catalog";
 import { useLiveStore } from "@/lib/live-store";
 import {
@@ -203,6 +203,17 @@ function AddPositionForm() {
   const [cost, setCost] = useState("");
   const [unit, setUnit] = useState<CostUnit>("EUR");
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Fecha a lista de sugestões ao clicar fora. Sem isto, a lista ficava aberta
+  // por cima do resto do painel até se escolher um pet.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
 
   const matches = useMemo(() => searchPets(query, 6), [query]);
   const qtyNum = Math.max(1, Math.min(99, Math.round(Number(qty) || 1)));

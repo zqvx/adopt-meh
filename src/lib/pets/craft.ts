@@ -6,7 +6,7 @@ import type { InventoryItem } from "../store";
  * Economia do flip de criação de Néon / Mega.
  *
  * NFR: 4 pets iguais FULL GROWN + 1 Fly + 1 Ride poção (≈ 1 poção de cada).
- * MFR: 4 néons (16 pets) + poções (assumimos 1 fly + 1 ride no mega).
+ * MFR: 4 néons (16 pets), e cada néon leva o seu par de poções → 4 × (F+R).
  *
  * O "trabalho" de envelhecer os pets é grátis (grind), por isso o lucro real
  * vem do prémio de néon menos o custo dos pets base.
@@ -68,8 +68,10 @@ export function craftEconomy(
   const netUsd = sellUsd * (1 - feePct / 100);
 
   const baseCount = kind === "nfr" ? 4 : 16;
-  // Poções: NFR usa 1 fly + 1 ride; MFR idem (o mega herda o néon).
-  const potionUsd = POTION_COST_USD;
+  // Poções: NFR usa 1 fly + 1 ride. O MFR precisa de 4 néons, e **cada** néon
+  // leva o seu par de poções — o mega não herda as do primeiro (era o que aqui
+  // se assumia, e dava o break-even do mega inflado em ~6,60 USD).
+  const potionUsd = kind === "nfr" ? POTION_COST_USD : POTION_COST_USD * 4;
 
   // Break-even: (net - potions) / baseCount = teto por pet base.
   const breakEvenBaseUsd = Math.max(0, (netUsd - potionUsd) / baseCount);

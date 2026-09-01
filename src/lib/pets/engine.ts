@@ -232,6 +232,17 @@ export function evaluateTrade(you: TradeLine[], them: TradeLine[]): TradeVerdict
  *    (para não pedires a mais).
  *  - Nunca sugere pets que o outro já está a dar nem trash/low liquidity.
  */
+/**
+ * Conjunto de onde saem as sugestões de add: pets fortes (liquidez alta,
+ * procura >= 4), não trash, com variantes — os que se voltam a vender depressa.
+ *
+ * Era recalculado (PETS.filter + map, ~109 pets) a cada tecla numa troca; só
+ * muda quando o catálogo muda, que é nunca em runtime.
+ */
+const COUNTER_POOL: { pet: Pet; points: number; usd: number }[] = PETS.filter(
+  (p) => p.liquidity === "high" && p.demand >= 4 && p.hasVariants,
+).map((p) => ({ pet: p, points: p.values.fr.points, usd: p.values.fr.usd }));
+
 export function suggestCounter(
   you: TradeLine[],
   them: TradeLine[],
@@ -243,14 +254,9 @@ export function suggestCounter(
 
   const themIds = new Set(them.map((l) => l.petId));
 
-  // Candidatos: pets fortes (liq. alta, procura >=4), não trash, que ele não dê.
-  const candidates = PETS.filter(
-    (p) =>
-      p.liquidity === "high" &&
-      p.demand >= 4 &&
-      !themIds.has(p.id) &&
-      p.hasVariants,
-  ).map((p) => ({ pet: p, points: p.values.fr.points, usd: p.values.fr.usd }));
+  // Só o que ele ainda não dá depende da troca; o resto do filtro é sempre
+  // igual, por isso fica feito uma vez (ver COUNTER_POOL acima).
+  const candidates = COUNTER_POOL.filter((c) => !themIds.has(c.pet.id));
 
   if (candidates.length === 0) return null;
 

@@ -35,7 +35,12 @@ function write(points: NetWorthPoint[]) {
   }
 }
 
-function dayStart(t: number) {
+/**
+ * Meia-noite UTC do dia de `t` — a mesma unidade com que os pontos são
+ * guardados. Exportada para a UI não inventar outro fuso e acabar com dois
+ * pontos no mesmo dia.
+ */
+export function dayStart(t: number) {
   const d = new Date(t);
   d.setUTCHours(0, 0, 0, 0);
   return d.getTime();

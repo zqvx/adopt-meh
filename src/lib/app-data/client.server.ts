@@ -211,7 +211,10 @@ function tokenIdentityKey(token: string): string {
             .digest("base64url");
         }
       }
-    } catch {}
+    } catch {
+      // Token opaco ou assinatura que não se consegue ler sem a chave: cai-se
+      // no hash do token inteiro, que continua estável por sessão (ver acima).
+    }
   }
   return createHash("sha256").update(token).digest("base64url");
 }

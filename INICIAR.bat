@@ -84,15 +84,16 @@ goto arrancar
 :arrancar
 echo [OK] Dependencias prontas.
 echo.
-echo [..] A arrancar... o navegador abre sozinho em http://localhost:8080
+echo [..] A arrancar... o navegador abre sozinho no endereco que aparecer
+echo       aqui em baixo ^(ex.: http://localhost:8123^) - e esse que conta,
+echo       nao o 8080.
 echo.
 echo     - Os PRECOS sao buscados em direto aos sites ^(atualizam sozinhos^).
 echo     - Para PARAR o terminal: prime Ctrl+C nesta janela.
 echo     - Para ter a versao mais nova no futuro: e so abrir este ficheiro
 echo       outra vez ^(ele atualiza-se sozinho se houver Git^).
 echo.
-start "" cmd /c "timeout /t 8 >nul & start http://localhost:8080"
-call npm run dev
+call node scripts\iniciar.mjs
 if errorlevel 1 (
     echo.
     echo [ERRO] O servidor terminou com erro. A mensagem esta acima.

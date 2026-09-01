@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "node scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080",
+    "iniciar": "node scripts/iniciar.mjs",
     "build": "node scripts/with-app-env.mjs vite build && npm run db:migrate",
     "db:migrate": "node scripts/migrate.mjs",
     "scrape:values": "node scripts/scrape-values.mjs",
@@ -20,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "npm run test:app && node --test 'scripts/**/*.test.mjs'",
-    "test:app": "node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts src/lib/p2p.test.ts",
+    "test:app": "node --import ./scripts/test-register.mjs --experimental-strip-types --test \"src/**/*.test.ts\"",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

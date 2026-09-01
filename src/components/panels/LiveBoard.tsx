@@ -6,7 +6,7 @@ import {
   Plus,
   Radio,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getPet } from "@/lib/pets/catalog";
 import { useLiveStore } from "@/lib/live-store";
 import {
@@ -306,13 +306,28 @@ export function LiveBoard() {
     return "cache";
   })();
   const [paused, setPaused] = useState(false);
+  /** Cópia das cotações no momento em que se pausou — é o que se mostra. */
+  const [frozen, setFrozen] = useState<QuoteSignal[] | null>(null);
   const [chart, setChart] = useState<QuoteSignal | null>(null);
   const [snipe, setSnipe] = useState<{ petId: string; variant: import("@/lib/pets/types").Variant } | null>(null);
   const snipeRef = useRef<HTMLDivElement>(null);
+  const scrollTimer = useRef<number | null>(null);
+
+  // Sem isto, o scroll disparava depois de o painel sair de cena.
+  useEffect(
+    () => () => {
+      if (scrollTimer.current !== null) window.clearTimeout(scrollTimer.current);
+    },
+    [],
+  );
 
   function armSniper(sig: QuoteSignal) {
     setSnipe({ petId: sig.quote.petId, variant: sig.quote.variant });
-    setTimeout(() => snipeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+    if (scrollTimer.current !== null) window.clearTimeout(scrollTimer.current);
+    scrollTimer.current = window.setTimeout(() => {
+      scrollTimer.current = null;
+      snipeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
   }
 
   const signals = useMemo(() => {
@@ -322,9 +337,22 @@ export function LiveBoard() {
       .sort((a, b) => b.score - a.score);
   }, [quotes, feePct, overrides]);
 
-  const buys = signals.filter((s) => s.signal === "buy");
-  const sells = signals.filter((s) => s.signal === "sell");
-  const top = signals.slice(0, 9);
+  /**
+   * Pausar tem de congelar os sinais a sério: antes só escondia o ticker e a
+   * tabela continuava a mexer a cada 2,4 s, por isso não dava para ler uma
+   * linha com atenção.
+   */
+  function togglePause() {
+    setPaused((wasPaused) => {
+      setFrozen(wasPaused ? null : signals);
+      return !wasPaused;
+    });
+  }
+
+  const shown = frozen ?? signals;
+  const buys = shown.filter((s) => s.signal === "buy");
+  const sells = shown.filter((s) => s.signal === "sell");
+  const top = shown.slice(0, 9);
 
   return (
     <section className="flex flex-col gap-3">
@@ -354,7 +382,7 @@ export function LiveBoard() {
               <Radio className={cn("size-3", !paused && "animate-pulse")} />
               {paused ? "PAUSADO" : "AO VIVO"}
             </span>
-            <Button variant="secondary" size="sm" onClick={() => setPaused((p) => !p)}>
+            <Button variant="secondary" size="sm" onClick={togglePause}>
               <Activity className="size-3.5" />
               {paused ? "Retomar" : "Pausar"}
             </Button>

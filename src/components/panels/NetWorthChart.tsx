@@ -11,6 +11,7 @@ import {
 import { Target, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
+  dayStart,
   projectGoal,
   readGoalUsd,
   readNetWorth,
@@ -59,12 +60,19 @@ export function NetWorthChart() {
         raw: hist,
       };
     }
-    // O ponto de hoje reflete o inventário atual.
-    mapped[mapped.length - 1] = {
-      ...mapped[mapped.length - 1],
-      daysAgo: 0,
-      eur: currentEur,
-    };
+    // O ponto de hoje reflete o inventário atual — mas só se o último ponto
+    // registado for mesmo de hoje. Caso contrário estávamos a reescrever o
+    // valor de ontem (e a chamá-lo "hoje") sempre que a app não era aberta.
+    const todayStart = dayStart(Date.now());
+    if (hist[hist.length - 1].t >= todayStart) {
+      mapped[mapped.length - 1] = {
+        ...mapped[mapped.length - 1],
+        daysAgo: 0,
+        eur: currentEur,
+      };
+    } else {
+      mapped.push({ daysAgo: 0, eur: currentEur });
+    }
     return { points: mapped, raw: hist };
   }, [currentEur]);
 
