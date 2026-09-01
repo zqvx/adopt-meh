@@ -256,6 +256,18 @@ export function LiveBoard() {
   const marketMeta = useMarketStore((s) => s.data?.meta) as
     | { live?: boolean; errors?: string[]; scrapedAt?: string }
     | undefined;
+  // Estado dos preços: os dados chegam do scraper automático (cron no GitHub)
+  // ou do endpoint local. Verdes só se a recolha tiver sido nas últimas 12h.
+  const priceState: "live" | "cache" | "base" = (() => {
+    if (!marketMeta) return "base";
+    const t = marketMeta.scrapedAt ? Date.parse(marketMeta.scrapedAt) : NaN;
+    const fresh =
+      Number.isFinite(t) && Date.now() - t < 12 * 60 * 60 * 1000;
+    // live:false = nenhuma fonte respondeu na última recolha (mesmo que o
+    // ficheiro tenha sido reescrito). Nesse caso nunca mostramos "atualizado".
+    if (fresh && marketMeta.live !== false) return "live";
+    return "cache";
+  })();
   const [paused, setPaused] = useState(false);
   const [chart, setChart] = useState<QuoteSignal | null>(null);
 
@@ -321,20 +333,22 @@ export function LiveBoard() {
           <span
             className={cn(
               "flex items-center gap-1 rounded-full px-2 py-0.5",
-              marketMeta?.live ? "bg-accent-dim text-accent" : "bg-surface-2 text-faint",
+              priceState === "live"
+                ? "bg-accent-dim text-accent"
+                : "bg-surface-2 text-faint",
             )}
           >
-            <Radio className={cn("size-3", marketMeta?.live && "animate-pulse")} />
-            {marketMeta?.live
-              ? "PREÇOS AO VIVO"
-              : marketMeta
-                ? "PREÇOS EM CACHE"
+            <Radio className={cn("size-3", priceState === "live" && "animate-pulse")} />
+            {priceState === "live"
+              ? "PREÇOS ATUALIZADOS"
+              : priceState === "cache"
+                ? "PREÇOS ANTIGOS"
                 : "VALORES BASE"}
           </span>
-          {marketMeta?.live
-            ? "Scraping dos sites OK"
-            : marketMeta
-              ? "Sites indisponíveis agora — uso valores guardados"
+          {priceState === "live"
+            ? "Scraping automático das fontes OK"
+            : priceState === "cache"
+              ? "Fontes indisponíveis na última recolha — valores guardados"
               : "A correr nos valores incluídos"}
         </p>
         <p className="font-mono text-[10px] text-faint">

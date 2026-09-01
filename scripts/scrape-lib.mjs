@@ -134,8 +134,10 @@ export function parseEldorado(html) {
 /**
  * Vai buscar as fontes e devolve o objeto market data. Cada fonte é
  * independente: se uma falhar, usa-se a outra (e nunca se lança).
+ * existingMeta preserva o scrapedAt da recolha anterior quando TODAS as
+ * fontes falham — assim a app não mostra "atualizado" com dados velhos.
  */
-export async function fetchMarketData(existingPets = {}) {
+export async function fetchMarketData(existingPets = {}, existingMeta = {}) {
   const pets = { ...existingPets };
   const errors = [];
 
@@ -157,12 +159,16 @@ export async function fetchMarketData(existingPets = {}) {
     pets[id] = { ...pets[id], frUsd: row.frUsd, source: "bloxultra" };
   }
 
+  const live = errors.length < 2;
   return {
     meta: {
-      scrapedAt: new Date().toISOString(),
+      // Só atualizamos o carimbo de tempo se pelo menos uma fonte respondeu.
+      scrapedAt: live
+        ? new Date().toISOString()
+        : (existingMeta.scrapedAt ?? new Date().toISOString()),
       currency: "USD",
       variant: "fr",
-      live: errors.length < 2,
+      live,
       errors,
       sources: Object.entries(SOURCES).map(([id, s]) => ({ id, name: s.name, url: s.url })),
     },

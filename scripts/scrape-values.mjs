@@ -32,7 +32,7 @@ async function main() {
   const check = process.argv.includes("--check");
   const existing = await loadExisting();
   console.log("A pesquisar fontes de valores reais...");
-  const result = await fetchMarketData(existing.pets ?? {});
+  const result = await fetchMarketData(existing.pets ?? {}, existing.meta ?? {});
 
   console.log(`Pets no ficheiro: ${Object.keys(result.pets).length}`);
   for (const [id, row] of Object.entries(result.pets).slice(0, 12)) {

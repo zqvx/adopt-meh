@@ -34,6 +34,41 @@ Atualizar automaticamente (Linux/macOS, `crontab -e`), de 6 em 6 horas:
 0 0,6,12,18 * * * cd /caminho/adopt-meh && npm run scrape:values >> scrape.log 2>&1
 ```
 
+## Atualização automática na nuvem (sem PC ligado)
+
+O workflow `.github/workflows/scrape.yml` corre o scraper de 6 em 6 horas nos
+servidores do GitHub (grátis):
+
+1. Faz checkout do repo e corre `node scripts/scrape-values.mjs`
+   (e o `discord-hype.mjs` se existirem secrets `DISCORD_TOKEN` /
+   `DISCORD_CHANNELS` no repositório).
+2. Se houver preços novos, faz commit de `public/data/values.json`
+   (e `hype.json`) direto na branch.
+3. O deploy (Vercel/Netlify, ligado ao repo) publica o site atualizado
+   automaticamente.
+
+Também podes disparar a recolha à mão: GitHub → separador **Actions** →
+*Scrape de preços* → **Run workflow**.
+
+No site, o selo do separador Ao Vivo mostra **PREÇOS ATUALIZADOS** quando a
+última recolha foi nas últimas 12 horas, **PREÇOS ANTIGOS** se as fontes
+falharam nesse período, e **VALORES BASE** sem dados de scraping.
+
+## Deploy
+
+O projeto usa o preset Vercel do TanStack Start:
+
+1. Em <https://vercel.com> → **Add New → Project** → importa o repo
+   `adopt-meh`.
+2. Sem variáveis nem configuração extra — o Vercel deteta o build
+   (`npm run build`) e publica.
+3. Cada push (incluindo os commits do scraper) gera um deploy novo. Os
+   preços ficam sempre frescos porque o cron acima atualiza o ficheiro que o
+   site serve.
+
+Não é preciso `vercel.json`; o Vercel deteta o preset. Em alternativa,
+Netlify funciona pelo mesmo princípio.
+
 ## Estado do scraper na app
 
 O separador **Ao Vivo** mostra um selo:
