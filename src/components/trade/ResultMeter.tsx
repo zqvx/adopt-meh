@@ -123,10 +123,12 @@ export function ResultMeter() {
 
         <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-bg-sunken px-4 py-3 sm:grid-cols-4 lg:w-[28rem] lg:shrink-0">
           <div>
-            <dt className="text-[11px] text-faint">Delta pts</dt>
+            <dt className="text-[11px] text-faint">
+              Δ pts <span className="text-accent">· decide W/F/L</span>
+            </dt>
             <dd
               className={cn(
-                "font-mono text-sm tabular-nums",
+                "font-mono text-base font-semibold tabular-nums",
                 verdict.deltaPoints > 0
                   ? "text-accent"
                   : verdict.deltaPoints < 0
@@ -139,19 +141,15 @@ export function ResultMeter() {
             </dd>
           </div>
           <div>
-            <dt className="text-[11px] text-faint">Delta {currency}</dt>
-            <dd
-              className={cn(
-                "font-mono text-sm tabular-nums",
-                verdict.deltaUsd > 0
-                  ? "text-accent"
-                  : verdict.deltaUsd < 0
-                    ? "text-loss"
-                    : "text-fg",
-              )}
+            <dt
+              className="text-[11px] text-faint"
+              title="Valor aproximado de revenda a dinheiro (marketplaces). É um mercado SEPARADO dos pontos — só informativo, NÃO decide o W/F/L. Vem do scraping quando disponível, senão é uma estimativa."
             >
-              {verdict.deltaUsd > 0 ? "+" : ""}
-              {formatMoney(verdict.deltaUsd, currency)}
+              Δ dinheiro (aprox.)
+            </dt>
+            <dd className="font-mono text-sm tabular-nums text-muted">
+              {verdict.deltaUsd > 0 ? "+" : verdict.deltaUsd < 0 ? "−" : ""}
+              {formatMoney(Math.abs(verdict.deltaUsd), currency)}
             </dd>
           </div>
           <div>
@@ -169,6 +167,14 @@ export function ResultMeter() {
           </div>
         </dl>
       </div>
+
+      <p className="mt-2 font-mono text-[10px] leading-relaxed text-faint">
+        O veredito W/F/L usa os <strong className="text-muted">pontos</strong>{" "}
+        (valor de troca dentro do jogo). O valor em{" "}
+        <strong className="text-muted">dinheiro</strong> é só uma referência de
+        revenda (mercado separado, sujeito a oferta/procura e taxas) — não torna
+        um bom trade em mau.
+      </p>
 
       <div
         className={cn(

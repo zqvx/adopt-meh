@@ -275,7 +275,7 @@ const SEEDS: Seed[] = [
     liq: "high",
     demand: 4,
     frPts: 36,
-    frUsd: 17,
+    frUsd: 8.5,
     glyph: "copper",
   },
   {
@@ -1042,14 +1042,26 @@ const SEEDS: Seed[] = [
   {
     id: "sugar-glider",
     name: "Sugar Glider",
-    aliases: ["sugar glider", "glider", "petauro"],
-    tier: "A",
-    liq: "medium",
-    demand: 4,
-    featured: true,
-    frPts: 32,
-    frUsd: 18,
+    aliases: ["sugar glider", "glider", "petauro", "esquilo voador"],
+    tier: "B",
+    liq: "low",
+    demand: 2,
+    frPts: 14,
+    frUsd: 3.1,
     glyph: "mint",
+  },
+  {
+    id: "tree-kangaroo",
+    name: "Tree Kangaroo",
+    // NOTA: é o "canguru das árvores", pet diferente do Kangaroo (Aussie Egg).
+    // Mantém-se separado para não confundir cotações na pesquisa.
+    aliases: ["tree kangaroo", "canguru da arvore", "canguru arvore"],
+    tier: "C",
+    liq: "low",
+    demand: 2,
+    frPts: 8,
+    frUsd: 2.9,
+    glyph: "forest",
   },
   {
     id: "albatross",
