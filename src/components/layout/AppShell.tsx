@@ -1,6 +1,7 @@
 import {
   Calculator,
   History,
+  Radio,
   Scale,
   Table2,
 } from "lucide-react";
@@ -14,15 +15,17 @@ import { TradeBoard } from "@/components/trade/TradeBoard";
 import { Arbitrage } from "@/components/panels/Arbitrage";
 import { HistoryPanel } from "@/components/panels/HistoryPanel";
 import { TierTable } from "@/components/panels/TierTable";
+import { LiveBoard } from "@/components/panels/LiveBoard";
 
 const TABS = [
+  { id: "live", label: "Ao Vivo", icon: Radio },
   { id: "trade", label: "Troca", icon: Scale },
   { id: "table", label: "Tabela", icon: Table2 },
   { id: "arb", label: "Margem", icon: Calculator },
   { id: "history", label: "Histórico", icon: History },
 ] as const;
 
-const CURRENCIES: Currency[] = ["USD", "BRL", "EUR"];
+const CURRENCIES: Currency[] = ["EUR", "USD", "BRL"];
 
 function Clock() {
   const [now, setNow] = useState<Date | null>(null);
@@ -77,7 +80,7 @@ export function AppShell() {
             <div className="min-w-0">
               <p className="text-sm font-semibold tracking-tight">NEXUS</p>
               <p className="truncate text-[11px] text-muted">
-                Terminal de liquidez · Adopt Me
+                Terminal de trading · Adopt Me · UE
               </p>
             </div>
           </div>
@@ -129,10 +132,18 @@ export function AppShell() {
       <main className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="min-w-0 font-mono text-[11px] text-faint">
-            Câmbio ref. · 1 USD = {FX.BRL.toFixed(2)} BRL · {FX.EUR.toFixed(2)} EUR
+            Mercado UE · câmbio ref. 1 € = {(1 / FX.EUR).toFixed(2)} USD · R$
+            {(FX.BRL / FX.EUR).toFixed(2)} · taxas 8–12%
           </p>
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={loadExample}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                loadExample();
+                setTab("trade");
+              }}
+            >
               Carregar exemplo
             </Button>
             <Button variant="ghost" size="sm" onClick={() => clear("all")}>
@@ -141,6 +152,7 @@ export function AppShell() {
           </div>
         </div>
 
+        {tab === "live" ? <LiveBoard /> : null}
         {tab === "trade" ? <TradeBoard /> : null}
         {tab === "table" ? <TierTable /> : null}
         {tab === "arb" ? <Arbitrage /> : null}

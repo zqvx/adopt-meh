@@ -22,7 +22,7 @@ interface AppState {
   currency: Currency;
   feePct: number;
   history: HistoryEntry[];
-  tab: "trade" | "table" | "arb" | "history";
+  tab: "live" | "trade" | "table" | "arb" | "history";
   addLine: (side: TradeSide, petId: string, variant: Variant) => void;
   removeLine: (side: TradeSide, id: string) => void;
   setQty: (side: TradeSide, id: string, qty: number) => void;
@@ -40,7 +40,7 @@ interface AppState {
 }
 
 const HISTORY_KEY = "nexus-trade-history-v1";
-const PREFS_KEY = "nexus-prefs-v1";
+const PREFS_KEY = "nexus-prefs-v2";
 
 function sideOf(state: AppState, side: TradeSide) {
   return side === "you" ? state.you : state.them;
@@ -103,10 +103,10 @@ export function readHistory(): HistoryEntry[] {
 export const useTradeStore = create<AppState>((set, get) => ({
   you: [],
   them: [],
-  currency: "USD",
+  currency: "EUR",
   feePct: 10,
   history: [],
-  tab: "trade",
+  tab: "live",
   addLine: (side, petId, variant) => {
     const pet = getPet(petId);
     if (!pet) return;
@@ -183,7 +183,6 @@ export const useTradeStore = create<AppState>((set, get) => ({
         { id: uid(), petId: "owl", variant: "fr", qty: 1 },
         { id: uid(), petId: "crow", variant: "fr", qty: 1 },
       ],
-      tab: "trade",
     });
   },
   setCurrency: (currency) => {

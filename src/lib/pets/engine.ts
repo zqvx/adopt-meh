@@ -146,7 +146,15 @@ export function evaluateTrade(you: TradeLine[], them: TradeLine[]): TradeVerdict
 }
 
 export const RIDE_POTION_POINTS = 2.5;
+export const RIDE_POTION_USD = 1.2;
 
 export function toRidePots(points: number) {
   return points / RIDE_POTION_POINTS;
 }
+
+/** Presets de taxa dos marketplaces usados no cross-trading europeu. */
+export const FEE_PRESETS = [
+  { id: "direct", label: "Direto · PayPal/MB Way", fee: 8 },
+  { id: "g2g", label: "G2G", fee: 10 },
+  { id: "eldorado", label: "Eldorado", fee: 12 },
+] as const;
