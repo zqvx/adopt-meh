@@ -1,6 +1,8 @@
 import {
   Backpack,
   Calculator,
+  Coffee,
+  Euro,
   FlaskConical,
   History,
   Radio,
@@ -34,8 +36,13 @@ import { SniperWatcher } from "@/components/panels/Sniper";
 import { InvestPanel } from "@/components/panels/InvestPanel";
 import { CraftPanel } from "@/components/panels/CraftPanel";
 import { InventoryPanel } from "@/components/panels/InventoryPanel";
+import { MorningBriefing } from "@/components/panels/MorningBriefing";
+import { P2PCentral } from "@/components/panels/P2PCentral";
+import { StockSniper } from "@/components/panels/StockSniper";
 
 const TABS = [
+  { id: "mission", label: "Missão do Dia", icon: Coffee },
+  { id: "p2p", label: "Central P2P", icon: Euro },
   { id: "live", label: "Ao Vivo", icon: Radio },
   { id: "invest", label: "Investir", icon: TrendingUp },
   { id: "craft", label: "Criação", icon: FlaskConical },
@@ -45,6 +52,12 @@ const TABS = [
   { id: "arb", label: "Margem", icon: Calculator },
   { id: "history", label: "Histórico", icon: History },
 ] as const;
+
+/** No telemóvel só cabem 5 — as restantes ficam no menu de topo (scroll). */
+const MOBILE_TAB_IDS = ["mission", "p2p", "live", "trade", "arb"] as const;
+const MOBILE_TABS = TABS.filter((t) =>
+  (MOBILE_TAB_IDS as readonly string[]).includes(t.id),
+);
 
 const CURRENCIES: Currency[] = ["EUR", "USD", "BRL"];
 
@@ -149,7 +162,7 @@ export function AppShell() {
             </div>
           </div>
 
-          <nav className="ml-4 hidden items-center gap-1 lg:flex">
+          <nav className="ml-4 hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex">
             {TABS.map((item) => {
               const Icon = item.icon;
               const active = tab === item.id;
@@ -239,6 +252,8 @@ export function AppShell() {
           </div>
         </div>
 
+        {tab === "mission" ? <MorningBriefing /> : null}
+        {tab === "p2p" ? <P2PCentral /> : null}
         {tab === "live" ? <LiveBoard /> : null}
         {tab === "invest" ? <InvestPanel /> : null}
         {tab === "craft" ? <CraftPanel /> : null}
@@ -248,6 +263,7 @@ export function AppShell() {
         {tab === "arb" ? (
           <div className="flex flex-col gap-4">
             <ArbMatrix />
+            <StockSniper />
             <Arbitrage />
           </div>
         ) : null}
@@ -263,7 +279,7 @@ export function AppShell() {
 
       <nav className="fixed right-0 bottom-0 left-0 z-40 border-t border-line bg-bg/95 px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:hidden">
         <ul className="mx-auto flex max-w-lg">
-          {TABS.map((item) => {
+          {MOBILE_TABS.map((item) => {
             const Icon = item.icon;
             const active = tab === item.id;
             return (

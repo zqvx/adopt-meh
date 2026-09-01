@@ -1,6 +1,11 @@
-import { RotateCcw, Trash2 } from "lucide-react";
-import { formatPct, formatPoints } from "@/lib/format";
-import { useTradeStore } from "@/lib/store";
+import { BadgeEuro, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect } from "react";
+import { FX, formatPct, formatPoints } from "@/lib/format";
+import { lineValue } from "@/lib/pets/engine";
+import { generateP2PReceipt } from "@/lib/p2p-receipt";
+import { useP2PStore } from "@/lib/p2p";
+import { downloadReceipt } from "@/lib/receipt";
+import { useTradeStore, type HistoryEntry } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -10,10 +15,22 @@ function kindClass(kind: string) {
   return "text-muted";
 }
 
+/** Valor em € do lado recebido — proxy do dinheiro cobrado numa venda P2P. */
+function entryEur(entry: HistoryEntry) {
+  const usd = entry.them.reduce((sum, line) => sum + lineValue(line).usd, 0);
+  return Math.round(usd * FX.EUR * 100) / 100;
+}
+
 export function HistoryPanel() {
   const history = useTradeStore((s) => s.history);
   const restoreHistory = useTradeStore((s) => s.restoreHistory);
   const deleteHistory = useTradeStore((s) => s.deleteHistory);
+  const hydrateP2P = useP2PStore((s) => s.hydrate);
+  const addVouch = useP2PStore((s) => s.addVouch);
+
+  useEffect(() => {
+    hydrateP2P();
+  }, [hydrateP2P]);
 
   if (history.length === 0) {
     return (
@@ -34,6 +51,10 @@ export function HistoryPanel() {
           Arquivo local
         </p>
         <h2 className="text-lg font-medium tracking-tight">Histórico de trocas</h2>
+        <p className="mt-1 text-[11px] text-faint">
+          Fechaste uma venda por Revolut? Toca no € para contar o vouch e
+          descarregar o recibo de prova.
+        </p>
       </header>
       <ul className="flex flex-col gap-2">
         {history.map((entry) => (
@@ -69,6 +90,31 @@ export function HistoryPanel() {
                 {formatPct(entry.pct)} · {entry.deltaPoints > 0 ? "+" : ""}
                 {formatPoints(entry.deltaPoints)} pts
               </p>
+              <Button
+                variant="secondary"
+                size="icon-sm"
+                onClick={() => {
+                  const amount = entryEur(entry);
+                  const vouch = addVouch(amount);
+                  const first = entry.them[0];
+                  const { url } = generateP2PReceipt({
+                    petId: first?.petId,
+                    variant: first?.variant,
+                    label: entry.them.length > 1 ? entry.themLabel : undefined,
+                    eur: amount,
+                    vouch,
+                    ts: entry.ts,
+                  });
+                  downloadReceipt(
+                    url,
+                    `vouch-${String(vouch).padStart(3, "0")}.png`,
+                  );
+                }}
+                aria-label="Registar venda P2P e descarregar recibo"
+                title="Venda paga por Revolut: +1 vouch e recibo"
+              >
+                <BadgeEuro className="size-3.5" />
+              </Button>
               <Button
                 variant="secondary"
                 size="icon-sm"
