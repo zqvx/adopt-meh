@@ -50,6 +50,11 @@ jobs:
       - name: Scraping de valores (BloxUltra + Eldorado)
         run: node scripts/scrape-values.mjs
 
+      # Acumula um snapshot de preços para o histórico real dos gráficos
+      # (public/data/price-history.json). Ignora recolhas falhadas.
+      - name: Acumular histórico de preços
+        run: node scripts/price-history.mjs
+
       # Opcional: define os secrets DISCORD_TOKEN e DISCORD_CHANNELS no repo
       # (Settings → Secrets and variables → Actions) para medir hype real.
       # Sem secrets o passo não faz nada e a app usa a semente hype.json.
@@ -63,7 +68,7 @@ jobs:
         run: |
           git config user.name "scraper-bot"
           git config user.email "scraper-bot@users.noreply.github.com"
-          git add public/data/values.json public/data/hype.json
+          git add public/data/values.json public/data/hype.json public/data/price-history.json
           if git diff --cached --quiet; then
             echo "Sem preços novos desta vez."
           else

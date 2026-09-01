@@ -13,6 +13,7 @@ import {
 import { getPet } from "@/lib/pets/catalog";
 import type { Variant } from "@/lib/pets/types";
 import { FX, formatMoney } from "@/lib/format";
+import { realPriceSeries, useMarketStore } from "@/lib/market-data";
 import { useTradeStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { PetGlyph } from "./PetGlyph";
@@ -28,7 +29,7 @@ interface Props {
 }
 
 /** Gera 30 dias de histórico determinístico em volta do preço de referência. */
-function buildSeries(petId: string, fair: number, now: number) {
+function buildSimSeries(petId: string, fair: number, now: number) {
   let seed = 0;
   for (const ch of petId) seed = (seed * 31 + ch.charCodeAt(0)) % 1_000_003;
   const rand = () => {
@@ -36,15 +37,20 @@ function buildSeries(petId: string, fair: number, now: number) {
     return seed / 0x7fffffff;
   };
   const days = 30;
-  const out: { day: number; price: number }[] = [];
+  const out: { daysAgo: number; price: number; t: number }[] = [];
   let price = fair * (0.92 + rand() * 0.08);
+  const nowT = Date.now();
   for (let i = days; i >= 0; i--) {
     const drift = (fair - price) * 0.08 + (rand() - 0.5) * fair * 0.05;
     price = Math.max(fair * 0.7, Math.min(fair * 1.25, price + drift));
-    out.push({ day: i, price: Math.round(price * 100) / 100 });
+    out.push({
+      daysAgo: i,
+      price: Math.round(price * 100) / 100,
+      t: nowT - i * 24 * 60 * 60 * 1000,
+    });
   }
   // O último ponto é o preço atual real.
-  out[out.length - 1] = { day: 0, price: now };
+  out[out.length - 1] = { daysAgo: 0, price: now, t: nowT };
   return out;
 }
 
@@ -52,11 +58,18 @@ export function PetChartModal({ petId, variant, fairUsd, nowUsd, onClose }: Prop
   const currency = useTradeStore((s) => s.currency);
   const addLine = useTradeStore((s) => s.addLine);
   const setTab = useTradeStore((s) => s.setTab);
+  const history = useMarketStore((s) => s.history);
   const [unit, setUnit] = useState<"usd" | "eur">(
     currency === "BRL" ? "usd" : currency.toLowerCase() === "eur" ? "eur" : "usd",
   );
   const pet = getPet(petId);
-  const data = useMemo(() => buildSeries(petId, fairUsd, nowUsd), [petId, fairUsd, nowUsd]);
+
+  const { data, isReal } = useMemo(() => {
+    const real = realPriceSeries(history, petId);
+    if (real) return { data: real, isReal: true };
+    return { data: buildSimSeries(petId, fairUsd, nowUsd), isReal: false };
+  }, [history, petId, fairUsd, nowUsd]);
+
   if (!pet) return null;
   const mult = unit === "eur" ? FX.EUR : 1;
   const min = Math.min(...data.map((d) => d.price), fairUsd) * mult;
@@ -67,6 +80,7 @@ export function PetChartModal({ petId, variant, fairUsd, nowUsd, onClose }: Prop
     chart.length > 3
       ? chart[chart.length - 1].p - chart[chart.length - 4].p
       : 0;
+  const spanDays = data.length > 1 ? data[0].daysAgo : 0;
 
   return (
     <div
@@ -87,14 +101,15 @@ export function PetChartModal({ petId, variant, fairUsd, nowUsd, onClose }: Prop
               </span>
             </p>
             <p className="font-mono text-[11px] text-muted">
-              30 dias · referência {formatMoney(fairUsd, currency)} · agora{" "}
+              {spanDays > 0 ? `${spanDays} dias` : "30 dias"} · referência{" "}
+              {formatMoney(fairUsd, currency)} · agora{" "}
               <span className={trend3 >= 0 ? "text-accent" : "text-loss"}>
                 {formatMoney(nowUsd, currency)}
               </span>
               {trend3 !== 0 ? (
                 <span className={trend3 >= 0 ? "text-accent" : "text-loss"}>
                   {" "}
-                  ({trend3 >= 0 ? "▲" : "▼"} {Math.abs(trend3).toFixed(2)} em 3 dias)
+                  ({trend3 >= 0 ? "▲" : "▼"} {Math.abs(trend3).toFixed(2)} em 3 recolhas)
                 </span>
               ) : null}
             </p>
@@ -133,7 +148,14 @@ export function PetChartModal({ petId, variant, fairUsd, nowUsd, onClose }: Prop
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="var(--color-line)" vertical={false} />
-              <XAxis dataKey="day" hide />
+              <XAxis
+                dataKey="daysAgo"
+                tick={{ fill: "var(--color-faint)", fontSize: 10, fontFamily: "var(--font-mono)" }}
+                tickFormatter={(d) => (d === 0 ? "hoje" : `-${d}d`)}
+                reversed
+                interval="preserveStartEnd"
+                minTickGap={40}
+              />
               <YAxis
                 domain={[min * 0.97, max * 1.03]}
                 tick={{ fill: "var(--color-faint)", fontSize: 10, fontFamily: "var(--font-mono)" }}
@@ -149,7 +171,7 @@ export function PetChartModal({ petId, variant, fairUsd, nowUsd, onClose }: Prop
                 }}
                 labelStyle={{ color: "var(--color-muted)" }}
                 formatter={(v: number) => [formatMoney(v / mult, currency), "Preço"]}
-                labelFormatter={(d) => `há ${d} dia${d === 1 ? "" : "s"}`}
+                labelFormatter={(d) => (d === 0 ? "hoje" : `há ${d} dias`)}
               />
               <ReferenceLine
                 y={fairUsd * mult}
@@ -167,8 +189,9 @@ export function PetChartModal({ petId, variant, fairUsd, nowUsd, onClose }: Prop
           </ResponsiveContainer>
         </div>
         <p className="mt-1 font-mono text-[10px] text-faint">
-          Linha a tracejado = valor de referência. Série simulada para análise visual
-          (não são preços históricos oficiais).
+          {isReal
+            ? `Linha a tracejado = valor de referência. Dados REAIS acumulados pelas recolhas automáticas (${data.length} pontos).`
+            : "Linha a tracejado = valor de referência. Série simulada — o histórico real começa a acumular com as recolhas automáticas (a cada 6h)."}
         </p>
 
         <div className="mt-3 flex gap-2">

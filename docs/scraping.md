@@ -42,13 +42,21 @@ Create new file), cola o conteúdo do `.txt` e faz commit.
 
 A partir daí corre de 6 em 6 horas nos servidores do GitHub (grátis):
 
-1. Faz checkout do repo e corre `node scripts/scrape-values.mjs`
-   (e o `discord-hype.mjs` se existirem secrets `DISCORD_TOKEN` /
-   `DISCORD_CHANNELS` no repositório).
-2. Se houver preços novos, faz commit de `public/data/values.json`
-   (e `hype.json`) direto na branch.
+1. Faz checkout do repo e corre `node scripts/scrape-values.mjs`, depois
+   `node scripts/price-history.mjs` (acumula um snapshot de preços para o
+   histórico real dos gráficos; ignora recolhas falhadas) e o
+   `discord-hype.mjs` se existirem secrets `DISCORD_TOKEN` /
+   `DISCORD_CHANNELS`.
+2. Se houver preços novos, faz commit de `public/data/values.json`,
+   `price-history.json` (e `hype.json`) direto na branch.
 3. O deploy (Vercel/Netlify, ligado ao repo) publica o site atualizado
    automaticamente.
+
+**Histórico real de preços:** cada recolha bem-sucedida junta um ponto ao
+`public/data/price-history.json` (máx. 1 ano, ~140 KB). O gráfico de 30 dias
+da app usa esses pontos reais a partir do momento em que existem ≥2; antes
+disso mostra uma série simulada. Ao fim de semanas/meses dá para ver padrões
+reais de subida/descida por pet.
 
 Também podes disparar a recolha à mão: GitHub → separador **Actions** →
 *Scrape de preços* → **Run workflow**.

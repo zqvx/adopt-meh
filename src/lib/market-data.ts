@@ -24,9 +24,15 @@ export interface HypeData {
   mentions?: Record<string, number>;
 }
 
+/** Snapshot acumulado pelo scraper ao longo do tempo (histórico real). */
+export interface PriceHistory {
+  snapshots: { t: number; p: Record<string, number> }[];
+}
+
 interface MarketState {
   data: MarketData | null;
   hype: HypeData | null;
+  history: PriceHistory | null;
   status: "idle" | "loading" | "ok" | "error";
   /** true quando os valores vieram do JSON de scraping. */
   loaded: boolean;
@@ -35,6 +41,7 @@ interface MarketState {
 
 const DATA_URL = "/data/values.json";
 const LIVE_URL = "/api/market/live";
+const HISTORY_URL = "/data/price-history.json";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
@@ -57,27 +64,59 @@ function fetchMarket(): Promise<MarketData> {
 export const useMarketStore = create<MarketState>((set, get) => ({
   data: null,
   hype: null,
+  history: null,
   status: "idle",
   loaded: false,
   load: async () => {
     if (get().status === "loading") return;
     set({ status: "loading" });
     try {
-      const data = await fetchJson<MarketData>(DATA_URL);
+      // No PC do utilizador o endpoint local (/api/market/live) faz scraping
+      // na hora; no site estático cai no JSON servido pelo cron. Ambos com
+      // fallback para o JSON estático do repositório.
+      const data = await fetchMarket();
       if (!data || typeof data.pets !== "object") throw new Error("JSON inválido");
-      // O hype é opcional — se faltar, a app usa a procura do catálogo.
+      // Hype e histórico são opcionais — se faltarem, a app usa fallbacks.
       let hype: HypeData | null = null;
       try {
         hype = await fetchJson<HypeData>("/data/hype.json");
       } catch {
         hype = null;
       }
-      set({ data, hype, status: "ok", loaded: true });
+      let history: PriceHistory | null = null;
+      try {
+        const h = await fetchJson<PriceHistory>(HISTORY_URL);
+        if (h && Array.isArray(h.snapshots)) history = h;
+      } catch {
+        history = null;
+      }
+      set({ data, hype, history, status: "ok", loaded: true });
     } catch {
       set({ status: "error" });
     }
   },
 }));
+
+/**
+ * Série de preços REAL de um pet a partir do histórico acumulado pelo
+ * scraper. Devolve null quando ainda não há dados suficientes (< 2 pontos),
+ * caso em que o gráfico usa a série simulada.
+ */
+export function realPriceSeries(
+  history: PriceHistory | null,
+  petId: string,
+): { daysAgo: number; price: number; t: number }[] | null {
+  const snaps = history?.snapshots ?? [];
+  const pts = snaps
+    .map((s) => ({ t: s.t, price: s.p?.[petId] }))
+    .filter((p): p is { t: number; price: number } => typeof p.price === "number");
+  if (pts.length < 2) return null;
+  const newest = pts[pts.length - 1].t;
+  return pts.map((p) => ({
+    ...p,
+    daysAgo: Math.round((newest - p.t) / (24 * 60 * 60 * 1000)),
+  }));
+}
 
 /** Score de procura 0..100 de um pet: hype do Discord se existir, senão catálogo. */
 export function hypeScore(

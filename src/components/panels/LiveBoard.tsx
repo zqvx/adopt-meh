@@ -14,7 +14,7 @@ import {
   SIGNAL_META,
 } from "@/lib/pets/live";
 import { hypeScore, inflationFor, useMarketStore } from "@/lib/market-data";
-import { formatMoney, formatPct, VARIANT_SHORT } from "@/lib/format";
+import { FX, formatMoney, formatPct, VARIANT_SHORT } from "@/lib/format";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +88,14 @@ function OpportunityRow({ sig, onChart }: { sig: QuoteSignal; onChart: (pet: Pet
     sig.signal === "sell"
       ? { value: sig.overval, prefix: "+" }
       : { value: sig.edge, prefix: sig.edge > 0 ? "+" : "−" };
+  // MODO HARDCORE: dinheiro líquido que entra/sai do bolso, por pet, em €.
+  // Compra: venda líquida (após taxas) menos o que pagas agora.
+  // Venda: preço pedido acima do valor justo (o que cobras a mais).
+  const eur = FX.EUR;
+  const profitEur =
+    sig.signal === "sell"
+      ? (sig.quote.priceUsd - sig.fairUsd) * eur
+      : (sig.zones.netSellUsd - sig.quote.priceUsd) * eur;
 
   return (
     <div
@@ -156,12 +164,22 @@ function OpportunityRow({ sig, onChart }: { sig: QuoteSignal; onChart: (pet: Pet
         </p>
       </div>
 
-      <div className="hidden w-24 shrink-0 text-right md:block">
-        <p className="font-mono text-sm tabular-nums text-muted">
-          {formatMoney(sig.zones.netSellUsd, currency)}
+      <div className="w-20 shrink-0 text-right sm:w-24">
+        <p
+          className={cn(
+            "font-mono text-sm font-bold tabular-nums",
+            profitEur > 0 ? "text-accent" : "text-loss",
+          )}
+          title={
+            sig.signal === "sell"
+              ? "Sobre o valor justo — o que cobras a mais, em €"
+              : "Lucro líquido por pet depois das taxas, em €"
+          }
+        >
+          {profitEur >= 0 ? "+" : "−"}€{Math.abs(profitEur).toFixed(2)}
         </p>
-        <p className="font-mono text-[11px] text-faint">
-          ref. {formatMoney(sig.fairUsd, currency)}
+        <p className="hidden font-mono text-[11px] text-faint md:block">
+          liq. {formatMoney(sig.zones.netSellUsd, currency)}
         </p>
       </div>
 
@@ -389,7 +407,7 @@ export function LiveBoard() {
         <div className="hidden items-center gap-4 border-b border-line px-4 py-2 font-mono text-[10px] tracking-wide text-faint uppercase sm:flex">
           <span className="flex-1">Ativo</span>
           <span className="w-28 text-right">Preço atual</span>
-          <span className="hidden w-24 text-right md:block">Venda liq. / ref.</span>
+          <span className="w-20 text-right sm:w-24">Lucro € / venda liq.</span>
           <span className="hidden w-[92px] sm:block">Tendência</span>
           <span className="w-28 text-right sm:w-auto">Sinal</span>
         </div>
