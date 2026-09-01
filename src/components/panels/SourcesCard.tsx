@@ -1,4 +1,6 @@
-import { ExternalLink, Radio, ShieldCheck, Wallet } from "lucide-react";
+import { ExternalLink, Radio, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ageLabel, useMarketStore } from "@/lib/market-data";
 
 const LINKS = [
   {
@@ -10,6 +12,11 @@ const LINKS = [
     name: "Eldorado — guia de valores 2026",
     url: "https://www.eldorado.gg/blog/adopt-me-trading-values/",
     note: "Intervalos FR/NFR/MFR em dinheiro real",
+  },
+  {
+    name: "Game.Guide — lista de valores da comunidade",
+    url: "https://www.game.guide/adopt-me-value-list",
+    note: "Todas as variantes com procura, atualizado há poucos dias",
   },
   {
     name: "ElveBredd — valores em pontos",
@@ -31,6 +38,13 @@ const PAYOUTS = [
 ];
 
 export function SourcesCard() {
+  const marketData = useMarketStore((s) => s.data);
+  const marketStatus = useMarketStore((s) => s.status);
+  const loadMarket = useMarketStore((s) => s.load);
+  const scrapedAge = ageLabel(marketData?.meta?.scrapedAt);
+  const liveLabel = marketData?.meta?.live
+    ? "scraping em direto"
+    : "JSON guardado (sem internet no servidor)";
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
       <div>
@@ -40,31 +54,45 @@ export function SourcesCard() {
         <h3 className="text-base font-medium tracking-tight">
           Como confirmar que os valores são reais
         </h3>
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-faint">
+          <span>
+            Preços da app: {scrapedAge ? `atualizados ${scrapedAge}` : "sem data"} · {liveLabel}
+          </span>
+          <button
+            type="button"
+            onClick={() => loadMarket()}
+            disabled={marketStatus === "loading"}
+            className="flex items-center gap-1 rounded-full bg-bg-sunken px-2 py-0.5 text-fg transition-colors hover:text-accent disabled:opacity-50"
+          >
+            <RefreshCw className={cn("size-3", marketStatus === "loading" && "animate-spin")} />
+            {marketStatus === "loading" ? "a atualizar…" : "atualizar"}
+          </button>
+        </p>
       </div>
 
       <ol className="flex flex-col gap-2 text-sm text-muted">
         <li className="flex gap-2.5">
           <Radio className="mt-0.5 size-4 shrink-0 text-accent" />
           <span>
-            <strong className="text-fg">1 · TikTok LIVE.</strong> Vê streams de
-            trading Adopt Me em direto — o que as pessoas oferecem e pedem mostra a
-            procura real, não números inflacionados de listas.
+            <strong className="text-fg">1 · TikTok LIVE.</strong> Vê streams de trading Adopt Me em
+            direto — o que as pessoas oferecem e pedem mostra a procura real, não números
+            inflacionados de listas.
           </span>
         </li>
         <li className="flex gap-2.5">
           <ExternalLink className="mt-0.5 size-4 shrink-0 text-accent" />
           <span>
-            <strong className="text-fg">2 · Site de valores em dinheiro.</strong>{" "}
-            Confirma o valor equivalente em $ nos sites de preços reais (abaixo). Se
-            várias fontes batem certo, o valor é de verdade.
+            <strong className="text-fg">2 · Site de valores em dinheiro.</strong> Confirma o valor
+            equivalente em $ nos sites de preços reais (abaixo). Se várias fontes batem certo, o
+            valor é de verdade.
           </span>
         </li>
         <li className="flex gap-2.5">
           <Wallet className="mt-0.5 size-4 shrink-0 text-accent" />
           <span>
             <strong className="text-fg">3 · Recebe na UE.</strong> Em Portugal usa{" "}
-            <strong className="text-fg">Revolut</strong> ou PayPal (não há Pix).
-            Negocia só com contas verificadas e nunca pagues primeiro.
+            <strong className="text-fg">Revolut</strong> ou PayPal (não há Pix). Negocia só com
+            contas verificadas e nunca pagues primeiro.
           </span>
         </li>
       </ol>
@@ -106,9 +134,9 @@ export function SourcesCard() {
       </div>
 
       <p className="text-[11px] text-faint">
-        Os preços de referência do terminal seguem as listas públicas de valores em
-        dinheiro (BloxUltra/Eldorado, set. 2026). Cross-trading por dinheiro real
-        viola os Termos do Roblox — fá-lo por tua conta e risco.
+        Os preços de referência do terminal seguem as listas públicas de valores em dinheiro
+        (BloxUltra/Eldorado) e são renovados pelo scraping sempre que abres a app no teu PC.
+        Cross-trading por dinheiro real viola os Termos do Roblox — fá-lo por tua conta e risco.
       </p>
     </div>
   );

@@ -1,17 +1,10 @@
-import {
-  AlertTriangle,
-  Backpack,
-  FlaskConical,
-  Minus,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, Backpack, FlaskConical, Minus, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { getPet, searchPets, variantsFor } from "@/lib/pets/catalog";
 import { lineValue, liquidityScore } from "@/lib/pets/engine";
 import { readyFromInventory } from "@/lib/pets/craft";
 import { formatMoney, formatPoints, VARIANT_SHORT } from "@/lib/format";
+import { ageLabel, marketPriceFor, useMarketStore } from "@/lib/market-data";
 import type { InventoryItem } from "@/lib/store";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -19,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PetGlyph } from "@/components/trade/PetGlyph";
+import { VerifyPet } from "@/components/verify/VerifyPet";
 
 function DeadWeight({ onTrade }: { onTrade: () => void }) {
   const inventory = useTradeStore((s) => s.inventory);
@@ -54,8 +48,7 @@ function DeadWeight({ onTrade }: { onTrade: () => void }) {
           <Backpack className="size-4" /> Inventário saudável
         </p>
         <p className="mt-1 text-[12px] text-muted">
-          Nenhum peso morto: todos os teus pets têm liquidez alta (nota ≥ 4.5) e
-          vendem depressa.
+          Nenhum peso morto: todos os teus pets têm liquidez alta (nota ≥ 4.5) e vendem depressa.
         </p>
       </div>
     );
@@ -68,18 +61,15 @@ function DeadWeight({ onTrade }: { onTrade: () => void }) {
         <h3 className="text-sm font-semibold">Peso Morto — livra-te disto</h3>
       </div>
       <p className="text-[12px] text-muted">
-        Tens <strong className="text-warn">{dead.length}</strong> pet(s) que valem
-        dinheiro mas quase não se vendem (liquidez &lt; 4.5). Capital preso:{" "}
-        <strong className="text-fg">{formatMoney(tiedUsd, currency)}</strong>.
-        Usa-os como <em>adds</em> para fechar upgrades — despachas a iliquidez
-        para o outro jogador e ficas com um pet de topo que gira depressa.
+        Tens <strong className="text-warn">{dead.length}</strong> pet(s) que valem dinheiro mas
+        quase não se vendem (liquidez &lt; 4.5). Capital preso:{" "}
+        <strong className="text-fg">{formatMoney(tiedUsd, currency)}</strong>. Usa-os como{" "}
+        <em>adds</em> para fechar upgrades — despachas a iliquidez para o outro jogador e ficas com
+        um pet de topo que gira depressa.
       </p>
       <ul className="mt-3 flex flex-col gap-2">
         {dead.map(({ it, pet, score, value }) => (
-          <li
-            key={it.id}
-            className="flex items-center gap-2.5 rounded-md bg-surface-2 p-2"
-          >
+          <li key={it.id} className="flex items-center gap-2.5 rounded-md bg-surface-2 p-2">
             <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{pet.name}</p>
@@ -113,9 +103,7 @@ function CraftBadge({ petId }: { petId: string }) {
   return (
     <Badge tone={ready.canMega ? "accent" : "warn"}>
       <FlaskConical className="mr-1 size-3" />
-      {ready.canMega
-        ? `${ready.megas}× MEGA`
-        : `${ready.neons}× NÉON`}
+      {ready.canMega ? `${ready.megas}× MEGA` : `${ready.neons}× NÉON`}
     </Badge>
   );
 }
@@ -127,6 +115,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
   const remove = useTradeStore((s) => s.removeInventory);
   const addLine = useTradeStore((s) => s.addLine);
   const setTab = useTradeStore((s) => s.setTab);
+  const marketData = useMarketStore((s) => s.data);
   if (!pet) return null;
   const value = lineValue({
     id: item.id,
@@ -134,6 +123,8 @@ function InventoryRow({ item }: { item: InventoryItem }) {
     variant: item.variant,
     qty: 1,
   });
+  const market = marketPriceFor(pet.id, item.variant, marketData);
+  const marketDrift = market && value.usd > 0 ? Math.abs(market.usd - value.usd) / value.usd : 0;
   const trash = pet.liquidity === "trash";
 
   return (
@@ -147,6 +138,19 @@ function InventoryRow({ item }: { item: InventoryItem }) {
               {VARIANT_SHORT[item.variant]} · {formatPoints(value.points)} pts ·{" "}
               {formatMoney(value.usd, currency)}
             </p>
+            {market ? (
+              <p
+                className={cn(
+                  "font-mono text-[10px] tabular-nums",
+                  marketDrift > 0.15 ? "text-warn" : "text-faint",
+                )}
+              >
+                Mercado: {formatMoney(market.usd, currency)}
+                {market.source ? ` · ${market.source}` : ""}
+                {ageLabel(market.scrapedAt) ? ` · ${ageLabel(market.scrapedAt)}` : ""}
+                {marketDrift > 0.15 ? " · desatualizado no catálogo" : ""}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -160,6 +164,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {trash ? <Badge tone="loss">Trash</Badge> : null}
           {pet.hasVariants && item.qty >= 4 ? <CraftBadge petId={pet.id} /> : null}
+          <VerifyPet pet={pet} />
           <button
             type="button"
             onClick={() => {
@@ -179,9 +184,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
             >
               <Minus className="size-3.5" />
             </button>
-            <span className="w-8 text-center font-mono text-sm tabular-nums">
-              {item.qty}
-            </span>
+            <span className="w-8 text-center font-mono text-sm tabular-nums">{item.qty}</span>
             <button
               type="button"
               className="flex size-8 items-center justify-center rounded-sm bg-surface-3 text-muted hover:text-fg"
@@ -203,9 +206,28 @@ export function InventoryPanel() {
   const addLine = useTradeStore((s) => s.addLine);
   const setTab = useTradeStore((s) => s.setTab);
   const currency = useTradeStore((s) => s.currency);
+  const marketData = useMarketStore((s) => s.data);
+  const marketStatus = useMarketStore((s) => s.status);
+  const loadMarket = useMarketStore((s) => s.load);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const matches = useMemo(() => searchPets(query, 8), [query]);
+
+  // Valor de mercado do inventário inteiro com preços de scraping (quando o
+  // pet tem). Mostra também quantos itens têm preço online.
+  const marketTotal = useMemo(() => {
+    let usd = 0;
+    let liveCount = 0;
+    for (const it of inventory) {
+      const market = marketPriceFor(it.petId, it.variant, marketData);
+      const catalog = lineValue({ id: it.id, petId: it.petId, variant: it.variant, qty: 1 });
+      usd += (market?.usd ?? catalog.usd) * it.qty;
+      if (market) liveCount += it.qty;
+    }
+    if (liveCount === 0) return null;
+    return { usd, liveCount };
+  }, [inventory, marketData]);
+  const marketAge = ageLabel(marketData?.meta?.scrapedAt);
 
   // Leva os pets ilíquidos (peso morto) para o nosso lado da troca, para
   // serem usados como adds num upgrade.
@@ -238,19 +260,36 @@ export function InventoryPanel() {
         }}
       />
       <div className="rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
-        <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">
-          Os teus pets
-        </p>
+        <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">Os teus pets</p>
         <h2 className="flex items-center gap-2 text-lg font-medium tracking-tight">
           <Backpack className="size-5 text-accent" />
           Meu Inventário
         </h2>
         <p className="text-sm text-muted">
-          Regista o que tens. Assim, na troca, adicionas os teus pets num clique e o
-          valor é calculado com precisão. Total:{" "}
+          Regista o que tens. Assim, na troca, adicionas os teus pets num clique e o valor é
+          calculado com precisão. Total:{" "}
           <strong className="text-fg">{formatPoints(totalPts)} pts</strong> ·{" "}
           <strong className="text-fg">{formatMoney(totalUsd, currency)}</strong>.
+          {marketTotal ? (
+            <>
+              {" "}
+              Valor de mercado (scraping):{" "}
+              <strong className="text-accent">{formatMoney(marketTotal.usd, currency)}</strong>{" "}
+              <span className="text-[11px] text-faint">
+                ({marketTotal.liveCount} com preço online
+                {marketAge ? `, atualizado ${marketAge}` : ""})
+              </span>
+            </>
+          ) : null}
         </p>
+        <button
+          type="button"
+          onClick={() => loadMarket()}
+          disabled={marketStatus === "loading"}
+          className="mt-1 w-fit rounded-full bg-surface-3 px-2.5 py-1 text-[11px] text-muted transition-colors hover:text-fg disabled:opacity-50"
+        >
+          {marketStatus === "loading" ? "A atualizar preços…" : "Atualizar preços agora ↻"}
+        </button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
@@ -279,9 +318,7 @@ export function InventoryPanel() {
                   >
                     <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
                     <span className="truncate">{pet.name}</span>
-                    <Badge tone={pet.liquidity === "high" ? "accent" : "neutral"}>
-                      {pet.tier}
-                    </Badge>
+                    <Badge tone={pet.liquidity === "high" ? "accent" : "neutral"}>{pet.tier}</Badge>
                   </button>
                 </li>
               ))}
@@ -322,8 +359,7 @@ export function InventoryPanel() {
           ) : null}
 
           <p className="mt-3 text-[11px] text-faint">
-            Dica: adicionar o inventário não envia nada para servidores — fica só no
-            teu navegador.
+            Dica: adicionar o inventário não envia nada para servidores — fica só no teu navegador.
           </p>
         </div>
 
@@ -340,8 +376,18 @@ export function InventoryPanel() {
               inventory
                 .slice()
                 .sort((a, b) => {
-                  const va = lineValue({ id: a.id, petId: a.petId, variant: a.variant, qty: a.qty }).points;
-                  const vb = lineValue({ id: b.id, petId: b.petId, variant: b.variant, qty: b.qty }).points;
+                  const va = lineValue({
+                    id: a.id,
+                    petId: a.petId,
+                    variant: a.variant,
+                    qty: a.qty,
+                  }).points;
+                  const vb = lineValue({
+                    id: b.id,
+                    petId: b.petId,
+                    variant: b.variant,
+                    qty: b.qty,
+                  }).points;
                   return vb - va;
                 })
                 .map((item) => <InventoryRow key={item.id} item={item} />)

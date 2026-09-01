@@ -10,20 +10,14 @@ import {
   Table2,
   TrendingUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FX } from "@/lib/format";
 import { useLiveStore } from "@/lib/live-store";
 import { marketOverrides, useMarketStore } from "@/lib/market-data";
 import { recordNetWorth } from "@/lib/net-worth";
 import { lineValue } from "@/lib/pets/engine";
 import type { Currency } from "@/lib/pets/types";
-import {
-  readHistory,
-  readInventory,
-  readPositions,
-  readPrefs,
-  useTradeStore,
-} from "@/lib/store";
+import { readHistory, readInventory, readPositions, readPrefs, useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TradeBoard } from "@/components/trade/TradeBoard";
@@ -41,23 +35,17 @@ import { P2PCentral } from "@/components/panels/P2PCentral";
 import { StockSniper } from "@/components/panels/StockSniper";
 
 const TABS = [
-  { id: "mission", label: "Missão do Dia", icon: Coffee },
-  { id: "p2p", label: "Central P2P", icon: Euro },
-  { id: "live", label: "Ao Vivo", icon: Radio },
-  { id: "invest", label: "Investir", icon: TrendingUp },
-  { id: "craft", label: "Criação", icon: FlaskConical },
-  { id: "trade", label: "Troca", icon: Scale },
-  { id: "inventory", label: "Inventário", icon: Backpack },
-  { id: "table", label: "Tabela", icon: Table2 },
-  { id: "arb", label: "Margem", icon: Calculator },
-  { id: "history", label: "Histórico", icon: History },
+  { id: "mission", label: "Missão do Dia", short: "Missão", icon: Coffee },
+  { id: "p2p", label: "Central P2P", short: "P2P", icon: Euro },
+  { id: "live", label: "Ao Vivo", short: "Ao Vivo", icon: Radio },
+  { id: "invest", label: "Investir", short: "Investir", icon: TrendingUp },
+  { id: "craft", label: "Criação", short: "Criar", icon: FlaskConical },
+  { id: "trade", label: "Troca", short: "Troca", icon: Scale },
+  { id: "inventory", label: "Inventário", short: "Inventário", icon: Backpack },
+  { id: "table", label: "Tabela", short: "Tabela", icon: Table2 },
+  { id: "arb", label: "Margem", short: "Margem", icon: Calculator },
+  { id: "history", label: "Histórico", short: "Hist.", icon: History },
 ] as const;
-
-/** No telemóvel só cabem 5 — as restantes ficam no menu de topo (scroll). */
-const MOBILE_TAB_IDS = ["mission", "p2p", "live", "trade", "arb"] as const;
-const MOBILE_TABS = TABS.filter((t) =>
-  (MOBILE_TAB_IDS as readonly string[]).includes(t.id),
-);
 
 const CURRENCIES: Currency[] = ["EUR", "USD", "BRL"];
 
@@ -146,6 +134,21 @@ export function AppShell() {
     if (!liveStarted) startLive();
   }, [liveStarted, startLive]);
 
+  // Barra inferior móvel: traz o separador ativo para a vista (a barra é
+  // scrollable porque agora tem TODOS os separadores).
+  const mobileBarRef = useRef<HTMLUListElement>(null);
+  const mobileTabRefs = useRef(new Map<string, HTMLButtonElement>());
+  useEffect(() => {
+    const bar = mobileBarRef.current;
+    const btn = mobileTabRefs.current.get(tab);
+    if (!bar || !btn) return;
+    const barRect = bar.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    if (btnRect.left < barRect.left || btnRect.right > barRect.right) {
+      btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [tab]);
+
   return (
     <div className="bg-grid min-h-dvh overflow-x-hidden pb-24 lg:pb-8">
       <header className="sticky top-0 z-40 border-b border-line bg-bg/92 backdrop-blur-sm">
@@ -156,13 +159,14 @@ export function AppShell() {
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold tracking-tight">NEXUS</p>
-              <p className="truncate text-[11px] text-muted">
-                Terminal de trading · Adopt Me · UE
-              </p>
+              <p className="truncate text-[11px] text-muted">Terminal de trading · Adopt Me · UE</p>
             </div>
           </div>
 
-          <nav className="ml-4 hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex">
+          <nav
+            aria-label="Áreas da app"
+            className="ml-4 hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex"
+          >
             {TABS.map((item) => {
               const Icon = item.icon;
               const active = tab === item.id;
@@ -171,6 +175,7 @@ export function AppShell() {
                   key={item.id}
                   type="button"
                   onClick={() => setTab(item.id)}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex h-10 items-center gap-2 rounded-md px-3 text-sm transition-colors duration-150",
                     active
@@ -187,14 +192,19 @@ export function AppShell() {
 
           <div className="ml-auto flex items-center gap-2">
             <Clock />
-            <div className="flex rounded-md bg-surface-2 p-0.5 shadow-[var(--shadow-border)]">
+            <div
+              role="group"
+              aria-label="Moeda"
+              className="flex rounded-md bg-surface-2 p-0.5 shadow-[var(--shadow-border)]"
+            >
               {CURRENCIES.map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setCurrency(c)}
+                  aria-pressed={currency === c}
                   className={cn(
-                    "h-8 rounded-sm px-2.5 font-mono text-[11px]",
+                    "h-8 rounded-sm px-2.5 font-mono text-[11px] transition-colors duration-150",
                     currency === c ? "bg-fg text-bg" : "text-muted hover:text-fg",
                   )}
                 >
@@ -216,22 +226,18 @@ export function AppShell() {
             <span
               className={cn(
                 "hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] sm:flex",
-                marketStatus === "ok"
-                  ? "bg-accent-dim text-accent"
-                  : "bg-surface-2 text-muted",
+                marketStatus === "ok" ? "bg-accent-dim text-accent" : "bg-surface-2 text-muted",
               )}
               title="Fonte dos valores em dinheiro (scraping de sites de referência)"
             >
-              <Radio
-                className={cn("size-3", marketStatus === "ok" && "animate-pulse")}
-              />
+              <Radio className={cn("size-3", marketStatus === "ok" && "animate-pulse")} />
               {marketStatus === "ok"
                 ? `Valores reais · ${
                     marketData?.meta?.scrapedAt
-                      ? new Date(marketData.meta.scrapedAt).toLocaleDateString(
-                          "pt-PT",
-                          { day: "2-digit", month: "2-digit" },
-                        )
+                      ? new Date(marketData.meta.scrapedAt).toLocaleDateString("pt-PT", {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })
                       : "—"
                   }`
                 : "Valores de referência"}
@@ -272,28 +278,39 @@ export function AppShell() {
         <SniperWatcher />
 
         <p className="pb-2 text-center text-[11px] text-faint">
-          Valores independentes, para decisão rápida. Confirma sempre a procura
-          atual antes de aceitar.
+          Valores independentes, para decisão rápida. Confirma sempre a procura atual antes de
+          aceitar.
         </p>
       </main>
 
-      <nav className="fixed right-0 bottom-0 left-0 z-40 border-t border-line bg-bg/95 px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:hidden">
-        <ul className="mx-auto flex max-w-lg">
-          {MOBILE_TABS.map((item) => {
+      <nav
+        aria-label="Áreas da app"
+        className="no-scrollbar fixed right-0 bottom-0 left-0 z-40 border-t border-line bg-bg/97 px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm lg:hidden"
+      >
+        <ul
+          ref={mobileBarRef}
+          className="no-scrollbar mx-auto flex w-max min-w-full items-stretch gap-0.5 overflow-x-auto"
+        >
+          {TABS.map((item) => {
             const Icon = item.icon;
             const active = tab === item.id;
             return (
-              <li key={item.id} className="flex-1">
+              <li key={item.id} className="shrink-0">
                 <button
+                  ref={(el) => {
+                    if (el) mobileTabRefs.current.set(item.id, el);
+                    else mobileTabRefs.current.delete(item.id);
+                  }}
                   type="button"
                   onClick={() => setTab(item.id)}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-12 w-full flex-col items-center justify-center gap-0.5 text-[11px]",
-                    active ? "text-accent" : "text-muted",
+                    "flex h-12 w-16 flex-col items-center justify-center gap-0.5 rounded-md text-[10px] transition-colors duration-150",
+                    active ? "bg-accent-dim text-accent" : "text-muted hover:text-fg",
                   )}
                 >
                   <Icon className="size-4" />
-                  {item.label}
+                  {item.short}
                 </button>
               </li>
             );

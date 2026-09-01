@@ -1,13 +1,4 @@
-import {
-  Check,
-  Clock,
-  Copy,
-  Euro,
-  Plus,
-  Receipt,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { Check, Clock, Copy, Euro, Plus, Receipt, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PetGlyph } from "@/components/trade/PetGlyph";
 import { Badge } from "@/components/ui/badge";
@@ -50,25 +41,21 @@ function AddListing() {
   const [query, setQuery] = useState("");
   const [petId, setPetId] = useState<string | null>(null);
   const [variant, setVariant] = useState<Variant>("fr");
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState("1");
   const [cost, setCost] = useState("");
 
-  const results = useMemo(
-    () => (query.trim().length > 0 ? searchPets(query, 6) : []),
-    [query],
-  );
+  const results = useMemo(() => (query.trim().length > 0 ? searchPets(query, 6) : []), [query]);
   const pet = petId ? getPet(petId) : null;
   const marketEur = petId ? marketEurFor(petId, overrides) : 0;
   const variantMul = pet ? pet.values[variant].usd / pet.values.fr.usd : 1;
   const unitMarket = Math.round(marketEur * variantMul * 100) / 100;
   const ladder = priceLadder(unitMarket);
+  const qtyNum = Math.max(1, Math.min(99, Math.round(Number(qty) || 1)));
 
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
       <div>
-        <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">
-          Pôr à venda
-        </p>
+        <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">Pôr à venda</p>
         <h3 className="text-base font-medium tracking-tight">
           Novo anúncio (venda direta por Revolut)
         </h3>
@@ -116,11 +103,10 @@ function AddListing() {
                   key={v}
                   type="button"
                   onClick={() => setVariant(v)}
+                  aria-pressed={variant === v}
                   className={cn(
                     "h-8 rounded-sm px-2.5 font-mono text-[11px] transition-colors",
-                    variant === v
-                      ? "bg-fg text-bg"
-                      : "bg-surface-2 text-muted hover:text-fg",
+                    variant === v ? "bg-fg text-bg" : "bg-surface-2 text-muted hover:text-fg",
                   )}
                 >
                   {VARIANT_LABEL[v]}
@@ -134,13 +120,7 @@ function AddListing() {
               <span className="font-mono text-[10px] tracking-wide text-faint uppercase">
                 Quantidade
               </span>
-              <Input
-                type="number"
-                min={1}
-                max={99}
-                value={qty}
-                onChange={(e) => setQty(Number(e.target.value) || 1)}
-              />
+              <Input inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />
             </label>
             <label className="flex flex-col gap-1">
               <span className="font-mono text-[10px] tracking-wide text-faint uppercase">
@@ -151,14 +131,14 @@ function AddListing() {
                 min={0}
                 step="0.01"
                 value={cost}
-                placeholder={String(defaultCostEur(unitMarket))}
+                placeholder={defaultCostEur(unitMarket).toFixed(2).replace(".", ",")}
                 onChange={(e) => setCost(e.target.value)}
               />
             </label>
           </div>
 
           <p className="rounded-lg bg-accent-dim px-3 py-2 font-mono text-[11px] text-accent">
-            Anúncio sai como: {multiCurrency(ladder.goldenEur * qty).tag}
+            Anúncio sai como: {multiCurrency(ladder.goldenEur * qtyNum).tag}
           </p>
 
           <div className="grid grid-cols-2 gap-2 rounded-lg bg-bg-sunken p-3 sm:grid-cols-4">
@@ -169,12 +149,8 @@ function AddListing() {
               { k: "Rápida", v: ladder.quickEur, tone: "text-warn" },
             ].map((row) => (
               <div key={row.k}>
-                <p className="font-mono text-[10px] tracking-wide text-faint uppercase">
-                  {row.k}
-                </p>
-                <p className={cn("font-mono text-sm tabular-nums", row.tone)}>
-                  {eur(row.v)}
-                </p>
+                <p className="font-mono text-[10px] tracking-wide text-faint uppercase">{row.k}</p>
+                <p className={cn("font-mono text-sm tabular-nums", row.tone)}>{eur(row.v)}</p>
               </div>
             ))}
           </div>
@@ -184,13 +160,13 @@ function AddListing() {
               addListing({
                 petId: pet.id,
                 variant: pet.hasVariants ? variant : "regular",
-                qty,
+                qty: qtyNum,
                 marketEur: unitMarket,
                 costEur: cost.trim() === "" ? undefined : Number(cost),
               });
               setQuery("");
               setPetId(null);
-              setQty(1);
+              setQty("1");
               setCost("");
             }}
           >
@@ -228,17 +204,11 @@ function ListingCard({ listing }: { listing: Listing }) {
   const sold = listing.status === "sold";
   const total = price.eur * listing.qty;
 
-  const ad = useMemo(
-    () => generateAd(listing, { vouches }),
-    [listing, vouches],
-  );
+  const ad = useMemo(() => generateAd(listing, { vouches }), [listing, vouches]);
 
   return (
     <article
-      className={cn(
-        "flex flex-col gap-3 rounded-lg bg-bg-sunken p-3",
-        sold && "opacity-60",
-      )}
+      className={cn("flex flex-col gap-3 rounded-lg bg-bg-sunken p-3", sold && "opacity-60")}
     >
       <div className="flex items-start gap-2.5">
         <PetGlyph id={listing.petId} glyph={pet?.glyph ?? "ink"} size="sm" />
@@ -295,8 +265,7 @@ function ListingCard({ listing }: { listing: Listing }) {
               onClick={() => {
                 void navigator.clipboard?.writeText(ad);
                 setCopied(true);
-                if (copyTimer.current !== null)
-                  window.clearTimeout(copyTimer.current);
+                if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
                 copyTimer.current = window.setTimeout(() => {
                   copyTimer.current = null;
                   setCopied(false);
@@ -317,10 +286,7 @@ function ListingCard({ listing }: { listing: Listing }) {
                   eur: total,
                   vouch,
                 });
-                downloadReceipt(
-                  url,
-                  `vouch-${String(vouch).padStart(3, "0")}.png`,
-                );
+                downloadReceipt(url, `vouch-${String(vouch).padStart(3, "0")}.png`);
               }}
             >
               <Euro className="size-3.5" />
@@ -335,7 +301,6 @@ function ListingCard({ listing }: { listing: Listing }) {
               <Trash2 className="size-3.5" />
             </Button>
           </div>
-
         </>
       ) : (
         <div className="flex gap-2">
@@ -372,8 +337,6 @@ function ListingCard({ listing }: { listing: Listing }) {
 
 /* ------------------------------------------------------------------ */
 
-/* ------------------------------------------------------------------ */
-
 export function P2PCentral() {
   const hydrate = useP2PStore((s) => s.hydrate);
   const listings = useP2PStore((s) => s.listings);
@@ -384,12 +347,18 @@ export function P2PCentral() {
     hydrate();
   }, [hydrate]);
 
+  // O decay dos anúncios depende do tempo (dia 4 → rápida, dia 7 →
+  // break-even). Um tique lento garante que os estágios mudam sozinhos
+  // enquanto o separador está aberto, sem esperarem por um re-render.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const active = listings.filter((l) => l.status === "active");
   const sold = listings.filter((l) => l.status === "sold");
-  const pipeline = active.reduce(
-    (sum, l) => sum + decayPrice(l).eur * l.qty,
-    0,
-  );
+  const pipeline = active.reduce((sum, l) => sum + decayPrice(l).eur * l.qty, 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -398,9 +367,7 @@ export function P2PCentral() {
           <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-wide text-faint uppercase">
             <Euro className="size-3" /> Caixa Revolut
           </p>
-          <p className="font-mono text-2xl text-accent tabular-nums">
-            {eur(cashEur)}
-          </p>
+          <p className="font-mono text-2xl text-accent tabular-nums">{eur(cashEur)}</p>
           <p className="text-[11px] text-faint">{sold.length} vendas fechadas</p>
         </div>
         <div className="rounded-xl bg-surface p-3 shadow-[var(--shadow-border)]">
@@ -423,9 +390,7 @@ export function P2PCentral() {
 
       <section className="flex flex-col gap-3 rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
         <header>
-          <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">
-            Pipeline
-          </p>
+          <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">Pipeline</p>
           <h3 className="text-base font-medium tracking-tight">
             Anúncios ativos · preço com decay automático
           </h3>
@@ -442,10 +407,17 @@ export function P2PCentral() {
           </div>
         )}
         {sold.length > 0 ? (
-          <div className="grid gap-2 lg:grid-cols-2">
-            {sold.slice(0, 6).map((l) => (
-              <ListingCard key={l.id} listing={l} />
-            ))}
+          <div className="flex flex-col gap-2">
+            <div className="grid gap-2 lg:grid-cols-2">
+              {sold.slice(0, 6).map((l) => (
+                <ListingCard key={l.id} listing={l} />
+              ))}
+            </div>
+            {sold.length > 6 ? (
+              <p className="text-center font-mono text-[11px] text-faint">
+                + {sold.length - 6} venda(s) mais antiga(s) no histórico da caixa
+              </p>
+            ) : null}
           </div>
         ) : null}
       </section>
@@ -453,9 +425,8 @@ export function P2PCentral() {
       <StockSniper />
 
       <p className="text-center text-[11px] text-faint">
-        Recebe sempre primeiro (ou a meias) e guarda o recibo. Cross-trading por
-        dinheiro real viola os Termos do Roblox/Uplift — a app é uma ferramenta
-        de referência.
+        Recebe sempre primeiro (ou a meias) e guarda o recibo. Cross-trading por dinheiro real viola
+        os Termos do Roblox/Uplift — a app é uma ferramenta de referência.
       </p>
     </div>
   );

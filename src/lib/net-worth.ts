@@ -16,18 +16,27 @@ export interface NetWorthPoint {
   usd: number;
 }
 
+/** Cache em memória da série — evita reler o localStorage a cada alteração. */
+let cache: NetWorthPoint[] | null = null;
+
 export function readNetWorth(): NetWorthPoint[] {
+  if (cache) return cache;
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return [];
+    if (!raw) {
+      cache = [];
+      return cache;
+    }
     const parsed = JSON.parse(raw) as NetWorthPoint[];
-    return Array.isArray(parsed) ? parsed : [];
+    cache = Array.isArray(parsed) ? parsed : [];
   } catch {
-    return [];
+    cache = [];
   }
+  return cache;
 }
 
 function write(points: NetWorthPoint[]) {
+  cache = points;
   try {
     localStorage.setItem(KEY, JSON.stringify(points));
   } catch {
@@ -54,6 +63,9 @@ export function recordNetWorth(totalUsd: number): NetWorthPoint[] {
   const points = readNetWorth();
   const today = dayStart(Date.now());
   const idx = points.findIndex((p) => p.t === today);
+  // Mesmo dia e valor igual: nada a fazer — poupa uma escrita em cada
+  // alteração de inventário (o efeito dispara a cada qty que se mexe).
+  if (idx >= 0 && points[idx].usd === totalUsd) return points;
   if (idx >= 0) points[idx].usd = totalUsd;
   else points.push({ t: today, usd: totalUsd });
 
@@ -81,8 +93,7 @@ export function readGoalUsd(): number | null {
 
 export function writeGoalUsd(usd: number | null) {
   try {
-    if (usd === null || !Number.isFinite(usd) || usd <= 0)
-      localStorage.removeItem(GOAL_KEY);
+    if (usd === null || !Number.isFinite(usd) || usd <= 0) localStorage.removeItem(GOAL_KEY);
     else localStorage.setItem(GOAL_KEY, String(usd));
   } catch {
     /* indisponível */

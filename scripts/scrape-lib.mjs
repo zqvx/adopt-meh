@@ -9,44 +9,18 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
-export const NAME_TO_ID = {
-  "bat dragon": "bat-dragon",
-  "shadow dragon": "shadow-dragon",
-  "giraffe": "giraffe",
-  "frost dragon": "frost-dragon",
-  "owl": "owl",
-  "parrot": "parrot",
-  "crow": "crow",
-  "evil unicorn": "evil-unicorn",
-  "african wild dog": "african-wild-dog",
-  "giant panda": "giant-panda",
-  "balloon unicorn": "balloon-unicorn",
-  "arctic reindeer": "arctic-reindeer",
-  "cow": "cow",
-  "turtle": "turtle",
-  "kangaroo": "kangaroo",
-  "unicorn": "unicorn",
-  "dragon": "dragon",
-  "queen bee": "queen-bee",
-  "king bee": "king-bee",
-  "hedgehog": "hedgehog",
-  "flamingo": "flamingo",
-  "lion": "lion",
-  "dalmatian": "dalmatian",
-  "hawk": "hawk",
-  "vampire dragon": "vampire-dragon",
-  "lavender dragon": "lavender-dragon",
-  "ghost dragon": "ghost-dragon",
-  "phoenix": "phoenix",
-  "t-rex": "t-rex",
-  "trex": "t-rex",
-  "dodo": "dodo",
-  "griffin": "griffin",
-  "shark": "shark",
-  "kitsune": "kitsune",
-  "octopus": "octopus",
-  "frost fury": "frost-fury",
+import { NAME_TO_ID as CATALOG_NAMES } from "./pet-names.mjs";
+
+/**
+ * Mapa manual (override) para nomes que as fontes usam e que não batem certo
+ * com o catálogo gerado. Tem prioridade sobre scripts/pet-names.mjs.
+ */
+const NAME_TO_ID_OVERRIDES = {
+  trex: "t-rex",
 };
+
+/** Nome no site da fonte -> id interno do catálogo (273 nomes gerados + overrides). */
+export const NAME_TO_ID = { ...CATALOG_NAMES, ...NAME_TO_ID_OVERRIDES };
 
 export const SOURCES = {
   bloxultra: {
@@ -56,6 +30,10 @@ export const SOURCES = {
   eldorado: {
     name: "Eldorado (intervalos de mercado)",
     url: "https://www.eldorado.gg/blog/adopt-me-trading-values/",
+  },
+  gameguide: {
+    name: "Game.Guide (verificação por pet)",
+    url: "https://www.game.guide/adopt-me-value-list",
   },
 };
 
@@ -180,5 +158,132 @@ export async function fetchMarketData(existingPets = {}, existingMeta = {}) {
       sources: Object.entries(SOURCES).map(([id, s]) => ({ id, name: s.name, url: s.url })),
     },
     pets,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Verificação por pet na Game.Guide (valores de todas as variantes, unidade
+// "AMV" da comunidade). É a fonte que a app usa no botão "Verificar na net"
+// para o utilizador conferir um pet específico contra a app.
+// ---------------------------------------------------------------------------
+
+/** "Sugar Glider" -> "sugar-glider" (padrão de URL da Game.Guide). */
+export function gameGuideSlug(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** URL da página de valores da Game.Guide para um pet. */
+export function gameGuideUrl(name) {
+  return `https://www.game.guide/${gameGuideSlug(name)}-value-adopt-me`;
+}
+
+const GG_LABELS = [
+  "Mega Fly Ride",
+  "Neon Fly Ride",
+  "Mega Ride",
+  "Mega Fly",
+  "Neon Fly",
+  "Neon Ride",
+  "Fly Ride",
+  "Normal",
+  "Mega",
+  "Neon",
+  "Fly",
+  "Ride",
+];
+
+/** "2.9K" -> 2900 · "1,0K" -> 1000 · "946" -> 946 */
+export function parseGgNumber(raw) {
+  const m = /^([0-9]+(?:[.,][0-9]+)?)\s*([KM])?$/i.exec(raw.trim());
+  if (!m) return null;
+  let n = Number(m[1].replace(",", "."));
+  const suffix = m[2]?.toUpperCase();
+  if (suffix === "K") n *= 1000;
+  if (suffix === "M") n *= 1_000_000;
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 10) / 10 : null;
+}
+
+/**
+ * Extrai a tabela "Trading Values" (todas as variantes) do HTML da página de
+ * um pet na Game.Guide. É tolerante: se uma variante faltar no HTML, simples-
+ * mente não aparece no resultado.
+ */
+export function parseGameGuide(html) {
+  const text = toText(html).replace(/[–—]/g, "-");
+  const start = text.indexOf("Trading Values");
+  if (start === -1) return { gg: {}, variants: {} };
+  const endIdx = ["Related Values", "Contents", "Frequently Asked"].map((s) =>
+    text.indexOf(s, start),
+  );
+  const stop = Math.min(...endIdx.filter((i) => i !== -1), text.length);
+  const section = text.slice(start, stop);
+
+  const gg = {};
+  let cursor = 0;
+  while (cursor < section.length) {
+    let hit = null;
+    for (const label of GG_LABELS) {
+      const at = section.indexOf(label, cursor);
+      if (at !== -1 && (hit === null || at < hit.at)) hit = { label, at };
+    }
+    if (!hit) break;
+    const rest = section.slice(hit.at + hit.label.length, hit.at + hit.label.length + 12);
+    // Número colado ao sufixo (67M), nunca separado por espaço — "67 Mega" é o
+    // valor 67 seguido do rótulo "Mega", não 67 milhões.
+    const num = /^\s+([\d.,]+)([KM]\b)?/i.exec(rest);
+    if (num) {
+      const value = parseGgNumber(num[1] + (num[2] ?? ""));
+      if (value !== null && gg[hit.label] === undefined) gg[hit.label] = value;
+      cursor = hit.at + hit.label.length + num[0].length;
+    } else {
+      cursor = hit.at + hit.label.length;
+    }
+  }
+
+  const MAP = {
+    Normal: "regular",
+    Fly: "fly",
+    Ride: "ride",
+    "Fly Ride": "fr",
+    "Neon Fly Ride": "nfr",
+    "Mega Fly Ride": "mfr",
+  };
+  const variants = {};
+  for (const [label, variant] of Object.entries(MAP)) {
+    if (gg[label] !== undefined) variants[variant] = gg[label];
+  }
+  return { gg, variants };
+}
+
+/**
+ * Vai à Game.Guide buscar os valores atuais de UM pet (todas as variantes).
+ * Lança se a página não existir ou a rede falhar — o chamador decide como
+ * degradar (a app mostra as ligações de verificação na mesma).
+ */
+export async function verifyPetOnWeb(name) {
+  const url = gameGuideUrl(name);
+  const html = await fetchHtml(url);
+  const { gg, variants } = parseGameGuide(html);
+  if (Object.keys(variants).length === 0) {
+    throw new Error(`sem valores na página da Game.Guide para "${name}"`);
+  }
+  const updated =
+    /Values updated (.+?)\s+(?:About|Related|Contents|Frequently|$)/
+      .exec(toText(html))?.[1]
+      ?.trim() ?? null;
+  return {
+    name,
+    url,
+    source: "gameguide",
+    sourceName: SOURCES.gameguide.name,
+    checkedAt: new Date().toISOString(),
+    updatedLabel: updated,
+    /** Tabela completa na unidade da comunidade ("AMV"). */
+    gg,
+    /** Só as variantes que a app usa: regular/fly/ride/fr/nfr/mfr. */
+    variants,
   };
 }

@@ -45,6 +45,11 @@ export function ResultMeter() {
   const addLine = useTradeStore((s) => s.addLine);
   const completeTrade = useTradeStore((s) => s.completeTrade);
 
+  const verdict = evaluateTrade(you, them);
+  const counterPet = verdict.counter ? getPet(verdict.counter.petId) : null;
+  const clamped = Math.max(-0.5, Math.min(0.5, verdict.pct));
+  const marker = 50 + clamped * 100;
+
   const handleReceipt = () => {
     if (verdict.kind === "empty") return;
     saveHistory();
@@ -56,10 +61,6 @@ export function ResultMeter() {
     saveHistory();
     completeTrade();
   };
-  const verdict = evaluateTrade(you, them);
-  const counterPet = verdict.counter ? getPet(verdict.counter.petId) : null;
-  const clamped = Math.max(-0.5, Math.min(0.5, verdict.pct));
-  const marker = 50 + clamped * 100;
 
   return (
     <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
@@ -70,12 +71,7 @@ export function ResultMeter() {
               <p className="font-mono text-[11px] tracking-[0.16em] text-faint uppercase">
                 Resultado em tempo real
               </p>
-              <p
-                className={cn(
-                  "text-2xl font-medium tracking-tight",
-                  KIND_CLASS[verdict.kind],
-                )}
-              >
+              <p className={cn("text-2xl font-medium tracking-tight", KIND_CLASS[verdict.kind])}>
                 {verdict.label}
                 {verdict.kind !== "empty" ? (
                   <span className="ml-2 font-mono text-lg tabular-nums">
@@ -169,11 +165,10 @@ export function ResultMeter() {
       </div>
 
       <p className="mt-2 font-mono text-[10px] leading-relaxed text-faint">
-        O veredito W/F/L usa os <strong className="text-muted">pontos</strong>{" "}
-        (valor de troca dentro do jogo). O valor em{" "}
-        <strong className="text-muted">dinheiro</strong> é só uma referência de
-        revenda (mercado separado, sujeito a oferta/procura e taxas) — não torna
-        um bom trade em mau.
+        O veredito W/F/L usa os <strong className="text-muted">pontos</strong> (valor de troca
+        dentro do jogo). O valor em <strong className="text-muted">dinheiro</strong> é só uma
+        referência de revenda (mercado separado, sujeito a oferta/procura e taxas) — não torna um
+        bom trade em mau.
       </p>
 
       <div
@@ -220,9 +215,7 @@ export function ResultMeter() {
         <div className="mt-3 flex items-start gap-3 rounded-lg bg-warn-dim px-3 py-3">
           <TrendingDown className="mt-0.5 size-4 shrink-0 text-warn" />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-warn">
-              ⚠ Downgrade · armadilha de liquidez
-            </p>
+            <p className="text-sm font-medium text-warn">⚠ Downgrade · armadilha de liquidez</p>
             <p className="text-xs text-muted">{verdict.downgradeDetail}</p>
           </div>
         </div>
@@ -232,19 +225,16 @@ export function ResultMeter() {
         <div className="mt-3 flex items-start gap-3 rounded-lg bg-surface-2 px-3 py-3 shadow-[var(--shadow-border)]">
           <Handshake className="mt-0.5 size-4 shrink-0 text-accent" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-accent">
-              Contra-proposta sugerida
-            </p>
+            <p className="text-sm font-medium text-accent">Contra-proposta sugerida</p>
             <p className="text-xs text-muted">{verdict.counter.reason}</p>
             <button
               type="button"
-              onClick={() =>
-                addLine("them", counterPet.id, verdict.counter!.variant)
-              }
+              onClick={() => addLine("them", counterPet.id, verdict.counter!.variant)}
               className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90"
             >
               <PetGlyph id={counterPet.id} glyph={counterPet.glyph} size="sm" />
-              {counterPet.name} {VARIANT_SHORT[verdict.counter.variant]} +{formatPoints(verdict.counter.points)} pts
+              {counterPet.name} {VARIANT_SHORT[verdict.counter.variant]} +
+              {formatPoints(verdict.counter.points)} pts
             </button>
           </div>
         </div>
@@ -254,9 +244,7 @@ export function ResultMeter() {
         <div className="mt-3 flex items-start gap-3 rounded-lg bg-surface-2 px-3 py-3 shadow-[var(--shadow-border)]">
           <TrendingUp className="mt-0.5 size-4 shrink-0 text-warn" />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-warn">
-              Upgrade · precisas de overpay
-            </p>
+            <p className="text-sm font-medium text-warn">Upgrade · precisas de overpay</p>
             <p className="text-xs text-muted">{verdict.overpayDetail}</p>
           </div>
         </div>

@@ -1,17 +1,14 @@
 import { Search, X, Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { searchPets, variantsFor } from "@/lib/pets/catalog";
-import {
-  addCustomPet,
-  useCustomPetsVersion,
-  type CustomPetInput,
-} from "@/lib/pets/custom";
+import { addCustomPet, useCustomPetsVersion, type CustomPetInput } from "@/lib/pets/custom";
 import { VARIANT_SHORT } from "@/lib/format";
 import type { Pet, TradeSide, Variant } from "@/lib/pets/types";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { PetGlyph } from "./PetGlyph";
+import { VerifyPetLinks } from "@/components/verify/VerifyPet";
 
 function liquidityTone(pet: Pet) {
   if (pet.liquidity === "trash") return "loss" as const;
@@ -128,8 +125,8 @@ function CustomPetForm({
         </button>
       </div>
       <p className="mt-1.5 font-mono text-[10px] text-faint">
-        O valor em pontos calcula-se sozinho (~€ → pontos). O pet fica guardado
-        para trocas, inventário e craft.
+        O valor em pontos calcula-se sozinho (~€ → pontos). O pet fica guardado para trocas,
+        inventário e craft.
       </p>
     </div>
   );
@@ -146,9 +143,7 @@ export function PetSearch({ side }: { side: TradeSide }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const results = useMemo(() => searchPets(query, 10), [query]);
-  const showCustom =
-    query.trim().length >= 2 &&
-    results.length === 0;
+  const showCustom = query.trim().length >= 2 && results.length === 0;
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -249,11 +244,11 @@ export function PetSearch({ side }: { side: TradeSide }) {
             <>
               <ul className="max-h-72 overflow-y-auto py-1">
                 {results.map((pet) => (
-                  <li key={pet.id}>
+                  <li key={pet.id} className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => choosePet(pet)}
-                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-3"
+                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-3"
                     >
                       <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
                       <span className="min-w-0 flex-1">
@@ -266,6 +261,9 @@ export function PetSearch({ side }: { side: TradeSide }) {
                         {pet.liquidity === "trash" ? "Trash" : pet.tier}
                       </Badge>
                     </button>
+                    <span className="pr-2">
+                      <VerifyPetLinks name={pet.name} />
+                    </span>
                   </li>
                 ))}
                 {query && results.length === 0 ? (

@@ -121,10 +121,13 @@
       "source": "marketplace-cash"
     },
     "sugar-glider": {
-      "frUsd": 3.1,
-      "lowUsd": 2.3,
-      "highUsd": 4.1,
-      "source": "marketplace-cash"
+      "frUsd": 13,
+      "nfrUsd": 39,
+      "mfrUsd": 123.5,
+      "lowUsd": 11.4,
+      "highUsd": 17.6,
+      "source": "eldorado",
+      "src": { "eldorado": 13 }
     },
     "tree-kangaroo": {
       "frUsd": 2.9,

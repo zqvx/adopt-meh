@@ -126,6 +126,41 @@
   background-size: 22px 22px;
 }
 
+/** Barra de separadores móvel: scroll sem barra visível. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  /* Foco de teclado visível e consistente (a11y) em todo o terminal. */
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-accent) 80%, transparent);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  /* Scrollbars discretas, a condizer com o tema escuro. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-3) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

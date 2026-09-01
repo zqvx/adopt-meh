@@ -3,6 +3,8 @@ import { getPet } from "./pets/catalog";
 
 export interface MarketPetValue {
   frUsd?: number;
+  nfrUsd?: number;
+  mfrUsd?: number;
   lowUsd?: number;
   highUsd?: number;
   source?: string;
@@ -13,6 +15,8 @@ export interface MarketPetValue {
 export interface MarketData {
   meta?: {
     scrapedAt?: string;
+    live?: boolean;
+    errors?: string[];
     sources?: { id: string; name: string; url: string }[];
   };
   pets: Record<string, MarketPetValue>;
@@ -121,11 +125,7 @@ export function realPriceSeries(
 }
 
 /** Score de procura 0..100 de um pet: hype do Discord se existir, senão catálogo. */
-export function hypeScore(
-  petId: string,
-  hype: HypeData | null,
-  fallbackDemand: number,
-): number {
+export function hypeScore(petId: string, hype: HypeData | null, fallbackDemand: number): number {
   const h = hype?.hype?.[petId];
   if (typeof h === "number") return Math.max(0, Math.min(100, h));
   return (fallbackDemand / 5) * 100;
@@ -176,7 +176,7 @@ export function inflationFor(
   if (!data?.pets) return null;
   const medianRatio = medianUsdPerPoint(data);
   if (!medianRatio) return null;
-  const thisPts = points > 0 ? points : getPet(petId)?.values.fr.points ?? 0;
+  const thisPts = points > 0 ? points : (getPet(petId)?.values.fr.points ?? 0);
   const frUsd = data.pets[petId]?.frUsd;
   if (!frUsd || thisPts <= 0) return null;
   const ratio = frUsd / thisPts;
@@ -195,4 +195,67 @@ export function marketOverrides(data: MarketData | null): Record<string, number>
     if (typeof row.frUsd === "number" && row.frUsd > 0) out[id] = row.frUsd;
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Preço de mercado por item (usado no inventário e nas trocas): funde o
+// scraping (values.json / /api/market/live) com o catálogo. As variantes sem
+// preço direto são escaladas a partir do FR com os multiplicadores do próprio
+// catálogo — mesma abordagem do feed ao vivo (pets/live.ts).
+// ---------------------------------------------------------------------------
+
+export interface MarketPrice {
+  usd: number;
+  /** true quando veio do scraping (false = catálogo local). */
+  live: boolean;
+  source?: string;
+  scrapedAt?: string;
+}
+
+const VARIANT_CASH_KEY: Partial<
+  Record<import("./pets/types").Variant, "frUsd" | "nfrUsd" | "mfrUsd">
+> = {
+  fr: "frUsd",
+  nfr: "nfrUsd",
+  mfr: "mfrUsd",
+};
+
+/** Preço de mercado de um pet+variante (USD) — null se não houver dados. */
+export function marketPriceFor(
+  petId: string,
+  variant: import("./pets/types").Variant,
+  data: MarketData | null,
+): MarketPrice | null {
+  if (!data?.pets) return null;
+  const row = data.pets[petId];
+  const pet = getPet(petId);
+  if (!row || !pet) return null;
+  const scrapedAt = data.meta?.scrapedAt;
+  const directKey = VARIANT_CASH_KEY[variant];
+  const direct = directKey ? row[directKey] : undefined;
+  if (typeof direct === "number" && direct > 0) {
+    return { usd: direct, live: true, source: row.source, scrapedAt };
+  }
+  // Escala a variante pelo rácio do catálogo (ex.: regular = 0.86×FR).
+  const catalogFr = pet.values.fr.usd;
+  const catalogVariant = pet.values[variant]?.usd ?? 0;
+  if (typeof row.frUsd === "number" && row.frUsd > 0 && catalogFr > 0 && catalogVariant > 0) {
+    const usd = row.frUsd * (catalogVariant / catalogFr);
+    return { usd: Math.round(usd * 100) / 100, live: true, source: row.source, scrapedAt };
+  }
+  return null;
+}
+
+/** "há 3 d" · "há 2 h" · "agora" — idade de um carimbo ISO. */
+export function ageLabel(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return null;
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (mins < 1) return "agora";
+  if (mins < 60) return `há ${mins} min`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `há ${hours} h`;
+  const days = Math.round(hours / 24);
+  return `há ${days} d`;
 }
