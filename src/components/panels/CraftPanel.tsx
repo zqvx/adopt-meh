@@ -1,4 +1,4 @@
-import { FlaskConical, Lightbulb, TriangleAlert } from "lucide-react";
+import { FlaskConical, Lightbulb, TriangleAlert, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { getPet, PETS, searchPets } from "@/lib/pets/catalog";
 import { useLiveStore } from "@/lib/live-store";
@@ -6,6 +6,7 @@ import {
   craftEconomy,
   rankCrafts,
   rateCraft,
+  readyFromInventory,
   POTION_COST_USD,
   type CraftKind,
 } from "@/lib/pets/craft";
@@ -84,6 +85,84 @@ function BestCrafts({ kind }: { kind: CraftKind }) {
   );
 }
 
+function CraftReadySection() {
+  const currency = useTradeStore((s) => s.currency);
+  const feePct = useTradeStore((s) => s.feePct);
+  const inventory = useTradeStore((s) => s.inventory);
+  const setTab = useTradeStore((s) => s.setTab);
+  const overrides = useOverrides();
+
+  const ready = useMemo(() => readyFromInventory(inventory), [inventory]);
+
+  if (ready.length === 0) {
+    return (
+      <div className="rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <Zap className="size-4 text-accent" />
+          Prontos a craftar (teu inventário)
+        </p>
+        <p className="mt-1.5 text-xs text-muted">
+          Ainda não tens 3+ cópias do mesmo pet. Regista os teus pets no separador{" "}
+          <button
+            type="button"
+            onClick={() => setTab("inventory")}
+            className="text-accent hover:underline"
+          >
+            Inventário
+          </button>{" "}
+          e aqui verás quando tiveres 4 (néon) ou 16 (mega).
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-surface p-3 shadow-[var(--shadow-border)] sm:p-4">
+      <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+        <Zap className="size-4 text-accent" />
+        Prontos a craftar (teu inventário)
+      </p>
+      <ul className="flex flex-col gap-2">
+        {ready.map((r) => {
+          const eco = craftEconomy(r.pet.id, "nfr", feePct, overrides as never);
+          const rating = eco ? rateCraft(eco) : null;
+          return (
+            <li
+              key={r.pet.id}
+              className="flex items-center gap-2.5 rounded-lg bg-bg-sunken px-3 py-2"
+            >
+              <PetGlyph id={r.pet.id} glyph={r.pet.glyph} size="sm" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{r.pet.name}</p>
+                <p className="font-mono text-[11px] text-muted">
+                  tens {r.qty}× ·{" "}
+                  {r.canMega
+                    ? `dá ${r.megas} mega${r.megas > 1 ? "s" : ""}${
+                        r.neons - r.megas * 4 > 0
+                          ? ` + ${r.neons - r.megas * 4} néon`
+                          : ""
+                      }`
+                    : r.canNeon
+                      ? `dá ${r.neons} néon${r.neons > 1 ? "s" : ""}`
+                      : `faltam ${4 - r.qty} p/ néon`}
+                </p>
+              </div>
+              {r.canNeon && rating ? (
+                <Badge tone={ratingTone(rating.rating)}>{rating.label}</Badge>
+              ) : null}
+              {r.canNeon && eco ? (
+                <span className="hidden font-mono text-[11px] text-faint sm:block">
+                  teto {formatMoney(eco.breakEvenBaseUsd, currency)}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export function CraftPanel() {
   const currency = useTradeStore((s) => s.currency);
   const feePct = useTradeStore((s) => s.feePct);
@@ -129,6 +208,8 @@ export function CraftPanel() {
           dinheiro real (não robux).
         </p>
       </div>
+
+      <CraftReadySection />
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="flex flex-col gap-3">

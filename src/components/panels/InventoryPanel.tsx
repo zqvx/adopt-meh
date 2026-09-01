@@ -1,13 +1,31 @@
-import { Backpack, Minus, Plus, Search, Trash2 } from "lucide-react";
+import { Backpack, FlaskConical, Minus, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { getPet, searchPets, variantsFor } from "@/lib/pets/catalog";
 import { lineValue } from "@/lib/pets/engine";
+import { readyFromInventory } from "@/lib/pets/craft";
 import { formatMoney, formatPoints, VARIANT_SHORT } from "@/lib/format";
 import type { InventoryItem } from "@/lib/store";
 import { useTradeStore } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PetGlyph } from "@/components/trade/PetGlyph";
+
+function CraftBadge({ petId }: { petId: string }) {
+  const inventory = useTradeStore((s) => s.inventory);
+  const ready = useMemo(
+    () => readyFromInventory(inventory).find((r) => r.pet.id === petId),
+    [inventory, petId],
+  );
+  if (!ready || ready.qty < 4) return null;
+  return (
+    <Badge tone={ready.canMega ? "accent" : "warn"}>
+      <FlaskConical className="mr-1 size-3" />
+      {ready.canMega
+        ? `${ready.megas}× MEGA`
+        : `${ready.neons}× NÉON`}
+    </Badge>
+  );
+}
 
 function InventoryRow({ item }: { item: InventoryItem }) {
   const pet = getPet(item.petId);
@@ -48,6 +66,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {trash ? <Badge tone="loss">Trash</Badge> : null}
+          {pet.hasVariants && item.qty >= 4 ? <CraftBadge petId={pet.id} /> : null}
           <button
             type="button"
             onClick={() => {

@@ -1,5 +1,6 @@
 import { getPet } from "./catalog";
 import type { Pet, Variant } from "./types";
+import type { InventoryItem } from "../store";
 
 /**
  * Economia do flip de criação de Néon / Mega.
@@ -134,4 +135,56 @@ export function rankCrafts(
     .map((id) => craftEconomy(id, kind, feePct, overrides))
     .filter((e): e is CraftEconomy => Boolean(e))
     .sort((a, b) => b.ratio - a.ratio);
+}
+
+export interface CraftReady {
+  pet: Pet;
+  /** Variante base que tens no inventário. */
+  variant: Variant;
+  /** Quantidade de pets base iguais. */
+  qty: number;
+  /** Nº de néons que consegues fazer (qty/4). */
+  neons: number;
+  /** Nº de megas (qty/16). */
+  megas: number;
+  /** Passa o limiar de néon (4). */
+  canNeon: boolean;
+  /** Passa o limiar de mega (16). */
+  canMega: boolean;
+}
+
+/**
+ * Agrupa o inventário por pet e diz quantas cópias tens — e se chegam para
+ * craftar Néon (4) ou Mega (16). Só conta pets com variantes (pets a sério,
+ * não poções/ovos).
+ */
+export function readyFromInventory(inventory: InventoryItem[]): CraftReady[] {
+  const byPet = new Map<string, { variant: Variant; qty: number }>();
+  for (const it of inventory) {
+    const pet = getPet(it.petId);
+    if (!pet || !pet.hasVariants) continue;
+    const cur = byPet.get(it.petId);
+    if (cur) cur.qty += it.qty;
+    else byPet.set(it.petId, { variant: it.variant, qty: it.qty });
+  }
+  const out: CraftReady[] = [];
+  for (const [petId, info] of byPet) {
+    const pet = getPet(petId);
+    if (!pet) continue;
+    const neons = Math.floor(info.qty / 4);
+    const megas = Math.floor(info.qty / 16);
+    if (info.qty >= 3) {
+      // Mostra a partir de 3 (quase lá); só marca "pronto" com 4/16.
+      out.push({
+        pet,
+        variant: info.variant,
+        qty: info.qty,
+        neons,
+        megas,
+        canNeon: neons >= 1,
+        canMega: megas >= 1,
+      });
+    }
+  }
+  return out.sort((a, b) => b.qty - a.qty);
 }
