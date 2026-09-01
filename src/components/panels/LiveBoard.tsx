@@ -1,11 +1,15 @@
-import { Activity, ArrowDownRight, ArrowUpRight, Plus, Radio } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  ArrowDownRight,
+  ArrowUpRight,
+  Plus,
+  Radio,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { getPet } from "@/lib/pets/catalog";
+import { useLiveStore } from "@/lib/live-store";
 import {
   analyzeQuote,
-  initQuotes,
-  tickQuotes,
-  type LiveQuote,
   type QuoteSignal,
   SIGNAL_META,
 } from "@/lib/pets/live";
@@ -16,12 +20,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PetGlyph } from "@/components/trade/PetGlyph";
 
-const TICK_MS = 2400;
-
-function Sparkline({ data, edge }: { data: number[]; edge: number }) {
+function Sparkline({ data, signal }: { data: number[]; signal: "buy" | "hold" | "sell" }) {
   const w = 92;
   const h = 30;
-  const up = edge >= 0.02;
   if (data.length < 2) return <svg width={w} height={h} className="opacity-30" />;
   const min = Math.min(...data);
   const max = Math.max(...data);
@@ -33,7 +34,12 @@ function Sparkline({ data, edge }: { data: number[]; edge: number }) {
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
-  const color = up ? "var(--color-accent)" : "var(--color-loss)";
+  const color =
+    signal === "buy"
+      ? "var(--color-accent)"
+      : signal === "sell"
+        ? "var(--color-warn)"
+        : "var(--color-fair)";
   return (
     <svg width={w} height={h} className="shrink-0" aria-hidden>
       <polyline
@@ -44,18 +50,12 @@ function Sparkline({ data, edge }: { data: number[]; edge: number }) {
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      {data.length > 2 ? (
-        <circle
-          cx={w}
-          cy={
-            h -
-            3 -
-            ((data[data.length - 1] - min) / span) * (h - 6)
-          }
-          r="2"
-          fill={color}
-        />
-      ) : null}
+      <circle
+        cx={w}
+        cy={h - 3 - ((data[data.length - 1] - min) / span) * (h - 6)}
+        r="2"
+        fill={color}
+      />
     </svg>
   );
 }
@@ -70,12 +70,17 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
   const variantLabel = pet.hasVariants
     ? VARIANT_SHORT[sig.quote.variant]
     : pet.category;
+  const metric =
+    sig.signal === "sell"
+      ? { value: sig.overval, prefix: "+" }
+      : { value: sig.edge, prefix: sig.edge > 0 ? "+" : "−" };
 
   return (
     <div
       className={cn(
         "flex items-center gap-3 border-b border-line px-3 py-2.5 last:border-0 sm:gap-4 sm:px-4",
         sig.signal === "buy" && "bg-accent-dim/40",
+        sig.signal === "sell" && "bg-warn-dim/30",
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -107,7 +112,7 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
 
       <div className="hidden w-24 shrink-0 text-right md:block">
         <p className="font-mono text-sm tabular-nums text-muted">
-          {formatMoney(sig.netUsd, currency)}
+          {formatMoney(sig.zones.netSellUsd, currency)}
         </p>
         <p className="font-mono text-[11px] text-faint">
           ref. {formatMoney(sig.fairUsd, currency)}
@@ -115,7 +120,7 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
       </div>
 
       <div className="hidden sm:block">
-        <Sparkline data={sig.quote.history} edge={sig.edge} />
+        <Sparkline data={sig.quote.history} signal={sig.signal} />
       </div>
 
       <div className="flex w-28 shrink-0 items-center justify-end gap-2 sm:w-auto">
@@ -126,16 +131,19 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
           <p
             className={cn(
               "font-mono text-sm font-semibold tabular-nums",
-              sig.edge >= 0.07
+              sig.signal === "buy"
                 ? "text-accent"
-                : sig.edge >= 0.02
+                : sig.signal === "sell"
                   ? "text-warn"
-                  : "text-loss",
+                  : "text-fair",
             )}
           >
-            {formatPct(sig.edge)}
+            {metric.prefix}
+            {Math.abs(metric.value * 100).toFixed(1)}%
           </p>
-          <p className="hidden font-mono text-[10px] text-faint sm:block">ROI liq.</p>
+          <p className="hidden font-mono text-[10px] text-faint sm:block">
+            {sig.signal === "sell" ? "sobre val." : "ROI liq."}
+          </p>
         </div>
         <Button
           variant="ghost"
@@ -154,7 +162,7 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
   );
 }
 
-function Ticker({ quotes }: { quotes: LiveQuote[] }) {
+function Ticker({ quotes }: { quotes: ReturnType<typeof useLiveStore.getState>["quotes"] }) {
   const currency = useTradeStore((s) => s.currency);
   const feePct = useTradeStore((s) => s.feePct);
   const items = useMemo(() => {
@@ -195,16 +203,8 @@ function Ticker({ quotes }: { quotes: LiveQuote[] }) {
 
 export function LiveBoard() {
   const feePct = useTradeStore((s) => s.feePct);
-  const [quotes, setQuotes] = useState<LiveQuote[]>(() => initQuotes());
+  const quotes = useLiveStore((s) => s.quotes);
   const [paused, setPaused] = useState(false);
-
-  useEffect(() => {
-    if (paused) return;
-    const id = window.setInterval(() => {
-      setQuotes((prev) => tickQuotes(prev));
-    }, TICK_MS);
-    return () => window.clearInterval(id);
-  }, [paused]);
 
   const signals = useMemo(() => {
     return quotes
@@ -214,7 +214,8 @@ export function LiveBoard() {
   }, [quotes, feePct]);
 
   const buys = signals.filter((s) => s.signal === "buy");
-  const top = signals.slice(0, 8);
+  const sells = signals.filter((s) => s.signal === "sell");
+  const top = signals.slice(0, 9);
 
   return (
     <section className="flex flex-col gap-3">
@@ -225,11 +226,11 @@ export function LiveBoard() {
               Feed de mercado · simulação em tempo real
             </p>
             <h2 className="text-lg font-medium tracking-tight">
-              Oportunidades para lucrar agora
+              Quando comprar e vender
             </h2>
             <p className="text-sm text-muted">
-              Compras abaixo do valor de referência e vendas líquidas após taxa de{" "}
-              {feePct.toFixed(0)}% (marketplaces europeus).
+              Sinais sobre valores de referência comunitários, com taxas de{" "}
+              {feePct.toFixed(0)}% já descontadas. Não há cotações oficiais em tempo real.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -250,7 +251,13 @@ export function LiveBoard() {
         </header>
 
         <div className="mt-3">
-          <Ticker quotes={quotes} />
+          {paused ? (
+            <div className="rounded-lg border border-line bg-bg-sunken px-4 py-2 text-center font-mono text-[11px] text-muted">
+              Feed pausado — as cotações deixam de atualizar.
+            </div>
+          ) : (
+            <Ticker quotes={quotes} />
+          )}
         </div>
       </div>
 
@@ -258,15 +265,19 @@ export function LiveBoard() {
         <div className="rounded-lg bg-accent-dim px-3 py-2">
           <span className="text-accent">{buys.length}</span>
           <span className="ml-1.5 text-muted">
-            {buys.length === 1 ? "oportunidade de compra" : "oportunidades de compra"}
+            {buys.length === 1 ? "zona de compra" : "zonas de compra"} · ROI ≥ +7%
+          </span>
+        </div>
+        <div className="rounded-lg bg-warn-dim px-3 py-2">
+          <span className="text-warn">{sells.length}</span>
+          <span className="ml-1.5 text-muted">
+            {sells.length === 1 ? "zona de venda" : "zonas de venda"} · sobrevalorizados
           </span>
         </div>
         <div className="rounded-lg bg-surface px-3 py-2 shadow-[var(--shadow-border)]">
-          <span className="text-fg">{signals.length}</span>
-          <span className="ml-1.5 text-muted">ativos monitorizados</span>
-        </div>
-        <div className="rounded-lg bg-surface px-3 py-2 shadow-[var(--shadow-border)]">
-          <span className="text-faint">ROI líq. = valor de venda após taxa − preço de compra</span>
+          <span className="text-faint">
+            Verde = comprar abaixo do teto · Amarelo = vender acima do chão
+          </span>
         </div>
       </div>
 
@@ -284,9 +295,10 @@ export function LiveBoard() {
       </div>
 
       <p className="text-[11px] text-faint">
-        Feed simulado para treino de decisão (não são cotações reais da Uplift Games
-        ou de marketplaces). Regra de ouro: só COMPRAR quando o sinal está verde e a
-        liquidez é alta — verde escuro = margem acima dos 7% depois da taxa.
+        Simulação para treino de decisão (não são cotações reais da Uplift Games nem
+        de marketplaces). Regras: só compres com sinal verde e liquidez alta; vende
+        quando o sinal amarelo aparecer. Para acompanhar as tuas posições reais, abre o
+        separador <strong>Investir</strong>.
       </p>
     </section>
   );

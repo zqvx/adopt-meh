@@ -16,13 +16,24 @@ export interface HistoryEntry {
   kind: string;
 }
 
+export interface Position {
+  id: string;
+  ts: number;
+  petId: string;
+  variant: Variant;
+  qty: number;
+  /** Preço total de compra em USD (custo efetivo). */
+  costUsd: number;
+}
+
 interface AppState {
   you: TradeLine[];
   them: TradeLine[];
   currency: Currency;
   feePct: number;
   history: HistoryEntry[];
-  tab: "live" | "trade" | "table" | "arb" | "history";
+  positions: Position[];
+  tab: "live" | "invest" | "trade" | "table" | "arb" | "history";
   addLine: (side: TradeSide, petId: string, variant: Variant) => void;
   removeLine: (side: TradeSide, id: string) => void;
   setQty: (side: TradeSide, id: string, qty: number) => void;
@@ -37,10 +48,14 @@ interface AppState {
   deleteHistory: (id: string) => void;
   restoreHistory: (id: string) => void;
   hydrateHistory: (entries: HistoryEntry[]) => void;
+  addPosition: (pos: Omit<Position, "id" | "ts">) => void;
+  removePosition: (id: string) => void;
+  hydratePositions: (positions: Position[]) => void;
 }
 
 const HISTORY_KEY = "nexus-trade-history-v1";
 const PREFS_KEY = "nexus-prefs-v2";
+const PORTFOLIO_KEY = "nexus-portfolio-v1";
 
 function sideOf(state: AppState, side: TradeSide) {
   return side === "you" ? state.you : state.them;
@@ -100,12 +115,32 @@ export function readHistory(): HistoryEntry[] {
   }
 }
 
+function persistPositions(positions: Position[]) {
+  try {
+    localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(positions.slice(0, 60)));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readPositions(): Position[] {
+  try {
+    const raw = localStorage.getItem(PORTFOLIO_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Position[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export const useTradeStore = create<AppState>((set, get) => ({
   you: [],
   them: [],
   currency: "EUR",
   feePct: 10,
   history: [],
+  positions: [],
   tab: "live",
   addLine: (side, petId, variant) => {
     const pet = getPet(petId);
@@ -229,4 +264,16 @@ export const useTradeStore = create<AppState>((set, get) => ({
     });
   },
   hydrateHistory: (entries) => set({ history: entries }),
+  addPosition: (pos) => {
+    const entry: Position = { ...pos, id: uid(), ts: Date.now() };
+    const next = [entry, ...get().positions].slice(0, 60);
+    set({ positions: next });
+    persistPositions(next);
+  },
+  removePosition: (id) => {
+    const next = get().positions.filter((p) => p.id !== id);
+    set({ positions: next });
+    persistPositions(next);
+  },
+  hydratePositions: (positions) => set({ positions }),
 }));

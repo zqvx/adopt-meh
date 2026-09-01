@@ -4,11 +4,18 @@ import {
   Radio,
   Scale,
   Table2,
+  TrendingUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { FX } from "@/lib/format";
+import { useLiveStore } from "@/lib/live-store";
 import type { Currency } from "@/lib/pets/types";
-import { readHistory, readPrefs, useTradeStore } from "@/lib/store";
+import {
+  readHistory,
+  readPositions,
+  readPrefs,
+  useTradeStore,
+} from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TradeBoard } from "@/components/trade/TradeBoard";
@@ -16,9 +23,11 @@ import { Arbitrage } from "@/components/panels/Arbitrage";
 import { HistoryPanel } from "@/components/panels/HistoryPanel";
 import { TierTable } from "@/components/panels/TierTable";
 import { LiveBoard } from "@/components/panels/LiveBoard";
+import { InvestPanel } from "@/components/panels/InvestPanel";
 
 const TABS = [
   { id: "live", label: "Ao Vivo", icon: Radio },
+  { id: "invest", label: "Investir", icon: TrendingUp },
   { id: "trade", label: "Troca", icon: Scale },
   { id: "table", label: "Tabela", icon: Table2 },
   { id: "arb", label: "Margem", icon: Calculator },
@@ -56,18 +65,26 @@ export function AppShell() {
   const loadExample = useTradeStore((s) => s.loadExample);
   const clear = useTradeStore((s) => s.clear);
   const hydrateHistory = useTradeStore((s) => s.hydrateHistory);
+  const hydratePositions = useTradeStore((s) => s.hydratePositions);
   const setFeePct = useTradeStore((s) => s.setFeePct);
+  const liveStarted = useLiveStore((s) => s.started);
+  const startLive = useLiveStore((s) => s.start);
 
   useEffect(() => {
     const prefs = readPrefs();
     if (prefs?.currency) setCurrency(prefs.currency);
     if (typeof prefs?.feePct === "number") setFeePct(prefs.feePct);
     hydrateHistory(readHistory());
+    hydratePositions(readPositions());
     const snapshot = useTradeStore.getState();
     if (snapshot.you.length === 0 && snapshot.them.length === 0) {
       loadExample();
     }
-  }, [hydrateHistory, loadExample, setCurrency, setFeePct]);
+  }, [hydrateHistory, hydratePositions, loadExample, setCurrency, setFeePct]);
+
+  useEffect(() => {
+    if (!liveStarted) startLive();
+  }, [liveStarted, startLive]);
 
   return (
     <div className="bg-grid min-h-dvh overflow-x-hidden pb-24 lg:pb-8">
@@ -153,6 +170,7 @@ export function AppShell() {
         </div>
 
         {tab === "live" ? <LiveBoard /> : null}
+        {tab === "invest" ? <InvestPanel /> : null}
         {tab === "trade" ? <TradeBoard /> : null}
         {tab === "table" ? <TierTable /> : null}
         {tab === "arb" ? <Arbitrage /> : null}
