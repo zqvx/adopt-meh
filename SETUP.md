@@ -55,7 +55,29 @@ O lançador, por esta ordem:
 2. Se o projeto foi clonado com **Git**, procura atualizações do código (`git pull`,
    sem falhar se estiveres offline);
 3. Instala as dependências só da primeira vez;
-4. Arranca e abre o navegador em `http://localhost:8080`.
+4. Arranca e abre o navegador **no endereço que ele próprio escreve** na janela
+   preta.
+
+### Que endereço é esse? (importante)
+
+Esquece o `8080`. O lançador procura a primeira porta livre — experimenta a
+**8123**, e se ela estiver ocupada (Steam, Jenkins, outro terminal já aberto)
+passa à **8124**, **8125**, **8321**… — e **escreve sempre o endereço certo na
+janela**:
+
+```
+[i] A porta 8123 estava ocupada (Steam, Jenkins ou outro programa).
+[..] A arrancar em http://localhost:8124
+  VITE v8.2.2  ready in 735 ms
+[OK] Pronto: http://localhost:8124
+```
+
+É esse `http://localhost:8124` que conta. O navegador abre sozinho assim que o
+servidor responde de facto (não "adormece 8 segundos e reza"), por isso nunca
+aparece aquele erro de *ligação recusada* em PCs mais lentos.
+
+Se quiseres escolher a porta à mão: `node scripts/iniciar.mjs --port 9000`.
+Para arrancar sem abrir o navegador: `node scripts/iniciar.mjs --no-browser`.
 
 Os **preços são buscados em direto aos sites** enquanto a app corre (atualizam
 sozinhos), por isso não precisas de fazer nada para ter valores frescos.
@@ -78,8 +100,9 @@ npm install
 npm run dev
 ```
 
-Quando aparecer `Local: http://localhost:8080/`, abre esse endereço no
-**teu navegador** (Chrome/Edge). A app fica a funcionar em ecrã inteiro.
+Quando aparecer `Local: http://localhost:8080/` (o modo manual usa sempre a
+8080), abre esse endereço no **teu navegador** (Chrome/Edge). A app fica a
+funcionar em ecrã inteiro.
 
 Para parar: `Ctrl + C`. Para voltar a abrir: `npm run dev`.
 
@@ -142,7 +165,16 @@ npm install
 npm run dev
 ```
 
-E abre http://localhost:8080 no navegador.
+E abre http://localhost:8080 no navegador (à mão é sempre a 8080).
+
+---
+
+## O navegador abriu uma página que não carrega
+
+O endereço que conta é **o que está escrito na janela preta**, não o 8080 e não
+o da última vez: se a 8123 estava ocupada, o lançador salta para a 8124 e diz
+qual escolheu. Se fechares a janela e abrires outra vez, o endereço pode mudar
+— é normal.`node scripts/iniciar.mjs --port 9000` fixa a porta à força.
 
 ---
 
