@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-bg: #07080a;
+  --color-bg-sunken: #050506;
+  --color-surface: #101216;
+  --color-surface-2: #161a20;
+  --color-surface-3: #1c222b;
+  --color-fg: #e8eaed;
+  --color-muted: #8b919a;
+  --color-faint: #5c6370;
+  --color-line: #e8eaed14;
+  --color-line-strong: #e8eaed29;
+  --color-accent: #3dcf9a;
+  --color-accent-fg: #04140e;
+  --color-accent-dim: #3dcf9a24;
+  --color-loss: #f43f5e;
+  --color-loss-fg: #2a0710;
+  --color-loss-dim: #f43f5e24;
+  --color-warn: #e8b86d;
+  --color-warn-fg: #1c1408;
+  --color-warn-dim: #e8b86d24;
+  --color-fair: #9aa3ad;
+
+  --color-glyph-night: #7a8494;
+  --color-glyph-ember: #d4785a;
+  --color-glyph-frost: #8ec0d4;
+  --color-glyph-moss: #6fa37a;
+  --color-glyph-sand: #c4b59a;
+  --color-glyph-ink: #5a6270;
+  --color-glyph-copper: #c4896a;
+  --color-glyph-teal: #5aabb0;
+  --color-glyph-bone: #d5d0c4;
+  --color-glyph-blood: #c45c6a;
+  --color-glyph-pearl: #cfd6de;
+  --color-glyph-forest: #4f8f70;
+  --color-glyph-storm: #7b93b0;
+  --color-glyph-sun: #d4a574;
+  --color-glyph-void: #4a5060;
+  --color-glyph-mint: #6fbfa3;
+  --color-glyph-clay: #b08070;
+  --color-glyph-steel: #8a93a0;
+  --color-glyph-ocean: #5b8fa8;
+  --color-glyph-wine: #a66a78;
+
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 1.75rem;
+
+  --shadow-border: 0 0 0 1px #ffffff14;
+  --shadow-border-hover: 0 0 0 1px #ffffff21;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  html,
+  body {
+    min-height: 100dvh;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: var(--color-accent-dim);
+    color: var(--color-fg);
+  }
+}
+
+@utility bg-grid {
+  background-color: var(--color-bg);
+  background-image: radial-gradient(
+    circle at center,
+    color-mix(in oklab, var(--color-fg) 7%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
