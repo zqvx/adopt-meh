@@ -89,6 +89,7 @@ function CraftReadySection() {
   const currency = useTradeStore((s) => s.currency);
   const feePct = useTradeStore((s) => s.feePct);
   const inventory = useTradeStore((s) => s.inventory);
+  const craftPet = useTradeStore((s) => s.craftPet);
   const setTab = useTradeStore((s) => s.setTab);
   const overrides = useOverrides();
 
@@ -151,10 +152,32 @@ function CraftReadySection() {
                 <Badge tone={ratingTone(rating.rating)}>{rating.label}</Badge>
               ) : null}
               {r.canNeon && eco ? (
-                <span className="hidden font-mono text-[11px] text-faint sm:block">
+                <span className="hidden font-mono text-[11px] text-faint md:block">
                   teto {formatMoney(eco.breakEvenBaseUsd, currency)}
                 </span>
               ) : null}
+              <div className="flex shrink-0 gap-1">
+                {r.canMega ? (
+                  <button
+                    type="button"
+                    onClick={() => craftPet(r.pet.id, "mfr")}
+                    className="h-8 rounded-md bg-accent px-2.5 font-mono text-[11px] font-semibold text-accent-fg hover:opacity-90"
+                    title="Gasta 16 pets base e junta 1 Mega (MFR) ao inventário"
+                  >
+                    Craftar MEGA
+                  </button>
+                ) : null}
+                {r.canNeon ? (
+                  <button
+                    type="button"
+                    onClick={() => craftPet(r.pet.id, "nfr")}
+                    className="h-8 rounded-md bg-surface-3 px-2.5 font-mono text-[11px] font-medium hover:bg-accent hover:text-accent-fg"
+                    title="Gasta 4 pets base e junta 1 Néon (NFR) ao inventário"
+                  >
+                    Craftar NÉON
+                  </button>
+                ) : null}
+              </div>
             </li>
           );
         })}

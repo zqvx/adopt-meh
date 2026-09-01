@@ -40,7 +40,25 @@ git checkout arena/01a05af2-adopt-meh
 
 ---
 
-## 3. Instalar e arrancar
+## 3. Instalar e arrancar — modo FÁCIL (um clique)
+
+Depois de extrair o ZIP:
+
+- **Windows:** faz **duplo-clique em `INICIAR.bat`**.
+  - Na primeira vez ele verifica o Node: se faltar, tenta instalar sozinho
+    (winget); se não conseguir, abre o site do Node para instalares. Depois
+    instala as dependências e abre o navegador em `http://localhost:8080`.
+  - Da segunda vez em diante arranca em segundos.
+- **Mac / Linux:** num terminal dentro da pasta:
+  ```
+  ./iniciar.sh
+  ```
+
+Para parar o terminal: foca a janela e prime `Ctrl + C`.
+
+---
+
+## 3b. Modo manual (se preferires)
 
 Dentro da pasta do projeto:
 
@@ -52,10 +70,7 @@ npm run dev
 Quando aparecer `Local: http://localhost:8080/`, abre esse endereço no
 **teu navegador** (Chrome/Edge). A app fica a funcionar em ecrã inteiro.
 
-Para parar: `Ctrl + C` na linha de comandos. Para voltar a abrir no futuro:
-```
-npm run dev
-```
+Para parar: `Ctrl + C`. Para voltar a abrir: `npm run dev`.
 
 ---
 

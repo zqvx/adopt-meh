@@ -62,6 +62,8 @@ interface AppState {
   addInventory: (petId: string, variant: Variant) => void;
   setInventoryQty: (id: string, qty: number) => void;
   removeInventory: (id: string) => void;
+  /** Consome 4 (néon) ou 16 (mega) pets base e junta o resultado ao inventário. */
+  craftPet: (petId: string, kind: "nfr" | "mfr") => boolean;
   hydrateInventory: (items: InventoryItem[]) => void;
 }
 
@@ -345,6 +347,56 @@ export const useTradeStore = create<AppState>((set, get) => ({
       persistInventory(inventory);
       return { inventory };
     });
+  },
+  craftPet: (petId, kind) => {
+    let done = false;
+    set((state) => {
+      const need = kind === "mfr" ? 16 : 4;
+      // Conta apenas cópias BASE (não-neon): regular/fly/ride/fr.
+      const baseVariants: Variant[] = ["regular", "fly", "ride", "fr"];
+      const lines = state.inventory
+        .filter((it) => it.petId === petId && baseVariants.includes(it.variant))
+        .sort((a, b) => a.qty - b.qty); // consome primeiro as menores pilhas
+      const total = lines.reduce((s, l) => s + l.qty, 0);
+      if (total < need) return {};
+
+      let remaining = need;
+      const consumeIds = new Map<string, number>(); // id -> qty a remover
+      for (const l of lines) {
+        if (remaining <= 0) break;
+        const take = Math.min(l.qty, remaining);
+        consumeIds.set(l.id, take);
+        remaining -= take;
+      }
+
+      let inventory = state.inventory
+        .map((it) => {
+          const take = consumeIds.get(it.id);
+          return take ? { ...it, qty: it.qty - take } : it;
+        })
+        .filter((it) => it.qty > 0);
+
+      // Junta o resultado (néon/mega) ao inventário.
+      const resultVariant: Variant = kind;
+      const existing = inventory.find(
+        (it) => it.petId === petId && it.variant === resultVariant,
+      );
+      if (existing) {
+        inventory = inventory.map((it) =>
+          it.id === existing.id ? { ...it, qty: it.qty + 1 } : it,
+        );
+      } else {
+        inventory = [
+          ...inventory,
+          { id: uid(), petId, variant: resultVariant, qty: 1 },
+        ];
+      }
+
+      persistInventory(inventory);
+      done = true;
+      return { inventory };
+    });
+    return done;
   },
   hydrateInventory: (items) => set({ inventory: items }),
 }));
