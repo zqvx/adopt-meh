@@ -1,20 +1,28 @@
 import { useMemo, useState } from "react";
 import { PETS } from "@/lib/pets/catalog";
+import { liquidityScore } from "@/lib/pets/engine";
 import { formatMoney, formatPoints, VARIANT_SHORT } from "@/lib/format";
-import type { Liquidity, Tier } from "@/lib/pets/types";
+import type { Tier } from "@/lib/pets/types";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PetGlyph } from "@/components/trade/PetGlyph";
 
 const TIERS: Array<Tier | "ALL"> = ["ALL", "S", "A", "B", "C", "D"];
 
-function liqTone(liq: Liquidity) {
-  if (liq === "trash") return "loss" as const;
-  if (liq === "low") return "warn" as const;
-  if (liq === "high") return "accent" as const;
-  return "neutral" as const;
+function LiqScore({ score }: { score: number }) {
+  const color =
+    score >= 7 ? "bg-accent" : score >= 4.5 ? "bg-warn" : "bg-loss";
+  const label =
+    score >= 7 ? "vende rápido" : score >= 4.5 ? "vende em dias" : "pode demorar semanas";
+  return (
+    <div className="flex items-center gap-2" title={`${score}/10 — ${label}`}>
+      <div className="h-1.5 w-14 overflow-hidden rounded-full bg-surface-3">
+        <div className={`h-full ${color}`} style={{ width: `${(score / 10) * 100}%` }} />
+      </div>
+      <span className="font-mono text-xs tabular-nums text-muted">{score.toFixed(0)}</span>
+    </div>
+  );
 }
 
 function Demand({ n }: { n: number }) {
@@ -98,7 +106,7 @@ export function TierTable() {
               <th className="px-3 py-2.5 font-medium">NFR</th>
               <th className="px-3 py-2.5 font-medium">MFR</th>
               <th className="px-3 py-2.5 font-medium">Procura</th>
-              <th className="px-3 py-2.5 font-medium">Liq.</th>
+              <th className="px-3 py-2.5 font-medium">Liquidez 1–10</th>
             </tr>
           </thead>
           <tbody>
@@ -157,9 +165,7 @@ export function TierTable() {
                   <Demand n={pet.demand} />
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap">
-                  <Badge tone={liqTone(pet.liquidity)}>
-                    {pet.liquidity === "trash" ? "Trash" : pet.liquidity}
-                  </Badge>
+                  <LiqScore score={liquidityScore(pet.liquidity, pet.demand, pet.tier)} />
                 </td>
               </tr>
             ))}

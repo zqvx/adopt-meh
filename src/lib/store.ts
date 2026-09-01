@@ -65,6 +65,9 @@ interface AppState {
   /** Consome 4 (néon) ou 16 (mega) pets base e junta o resultado ao inventário. */
   craftPet: (petId: string, kind: "nfr" | "mfr") => boolean;
   hydrateInventory: (items: InventoryItem[]) => void;
+  /** Marca a troca como concluída: tira os pets dados do inventário e junta
+   *  os recebidos, depois limpa a mesa. */
+  completeTrade: () => void;
 }
 
 const HISTORY_KEY = "nexus-trade-history-v1";
@@ -399,4 +402,37 @@ export const useTradeStore = create<AppState>((set, get) => ({
     return done;
   },
   hydrateInventory: (items) => set({ inventory: items }),
+  completeTrade: () => {
+    set((state) => {
+      let inventory = [...state.inventory];
+      const consume = (lines: TradeLine[], receiving: boolean) => {
+        for (const line of lines) {
+          const pet = getPet(line.petId);
+          if (!pet) continue;
+          const variant: Variant = pet.hasVariants ? line.variant : "regular";
+          const existing = inventory.find(
+            (it) => it.petId === line.petId && it.variant === variant,
+          );
+          if (existing) {
+            inventory = inventory.map((it) =>
+              it.id === existing.id
+                ? {
+                    ...it,
+                    qty: receiving
+                      ? it.qty + line.qty
+                      : Math.max(0, it.qty - line.qty),
+                  }
+                : it,
+            ).filter((it) => it.qty > 0);
+          } else if (receiving) {
+            inventory.push({ id: uid(), petId: line.petId, variant, qty: line.qty });
+          }
+        }
+      };
+      consume(state.you, false); // o que dás sai do inventário
+      consume(state.them, true); // o que recebes entra
+      persistInventory(inventory);
+      return { inventory, you: [], them: [] };
+    });
+  },
 }));

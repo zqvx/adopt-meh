@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "updatedAt": "2026-09-01T00:00:00Z",
+    "note": "Datas ILUSTRATIVAS — edita com as datas reais do jogo (Adopt Me anuncia as saídas de ovos nas notas de atualização). petsIds = pets que devem valorizar quando o ovo sair."
+  },
+  "events": [
+    {
+      "id": "jungle-cycle",
+      "egg": "Ovo da Selva / Ovos de evento a fechar",
+      "date": "2026-09-15T00:00:00Z",
+      "petIds": ["parrot", "fennec-fox", "capybara"],
+      "note": "Quando um ovo deixa de estar disponível, a oferta fecha e os pets limitados tendem a valorizar."
+    }
+  ]
+}

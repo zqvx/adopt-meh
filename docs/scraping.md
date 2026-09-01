@@ -34,6 +34,17 @@ Atualizar automaticamente (Linux/macOS, `crontab -e`), de 6 em 6 horas:
 0 0,6,12,18 * * * cd /caminho/adopt-meh && npm run scrape:values >> scrape.log 2>&1
 ```
 
+## Estado do scraper na app
+
+O separador **Ao Vivo** mostra um selo:
+- 🟢 **PREÇOS AO VIVO** — o endpoint local buscou os sites com sucesso (cache 10 min);
+- 🟡 **PREÇOS EM CACHE** — os sites falharam (Cloudflare/mudança de layout); a app
+  usa os valores guardados em `public/data/values.json` (fallback do dia anterior);
+- ⚪ **VALORES BASE** — sem dados de scraping, usa o catálogo.
+
+Cada fonte é independente (`Promise.allSettled`): se BloxUltra cair mas Eldorado
+responder, a app fica com o que conseguiu e nunca avaria.
+
 ## Se um site mudar / bloquear
 
 - O scraper **nunca apaga** dados: se uma fonte falha (Cloudflare, estrutura

@@ -43,16 +43,15 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 /** Preços frescos via servidor local (que tem internet); cai no JSON estático. */
-async function fetchMarket(): Promise<MarketData> {
-  try {
-    const live = await fetchJson<MarketData>(LIVE_URL);
-    if (live && typeof live.pets === "object" && Object.keys(live.pets).length > 0) {
-      return live;
-    }
-    throw new Error("live vazio");
-  } catch {
-    return fetchJson<MarketData>(DATA_URL);
-  }
+function fetchMarket(): Promise<MarketData> {
+  return fetchJson<MarketData>(LIVE_URL)
+    .then((live) => {
+      if (live && typeof live.pets === "object" && Object.keys(live.pets).length > 0) {
+        return live;
+      }
+      throw new Error("live vazio");
+    })
+    .catch(() => fetchJson<MarketData>(DATA_URL));
 }
 
 export const useMarketStore = create<MarketState>((set, get) => ({

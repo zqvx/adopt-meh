@@ -170,7 +170,35 @@ export function evaluateTrade(you: TradeLine[], them: TradeLine[]): TradeVerdict
     kind, label, hint, pct, deltaPoints, deltaUsd,
     you: youTot, them: themTot, risk, riskLabel, riskDetail,
     downgrade, downgradeDetail, counter: null,
+    upgrade: false, overpayPts: 0, overpayDetail: "",
   });
+
+  // UPGRADE: dás vários itens por um único pet forte do outro lado. Para ele
+  // aceitar desfazer-se do pet de procura alta, o mercado exige OVERPAY
+  // (geralmente 10–15% acima do valor do pet-alvo).
+  let upgrade = false;
+  let overpayPts = 0;
+  let overpayDetail = "";
+  if (!empty) {
+    const themConcentrated = themTot.concentration >= 0.6 && themTot.strongCount >= 1;
+    const youDiverse = youTot.count - themTot.count >= 2 && youTot.count >= 3;
+    const demandGap = themTot.avgDemand - youTot.avgDemand >= 0.5;
+    const themWorth = themTot.points;
+    if (themConcentrated && youDiverse && demandGap && themWorth > 0) {
+      upgrade = true;
+      const target = themWorth * 1.12; // 12% de overpay de referência
+      overpayPts = Math.max(0, Math.round(target - youTot.points));
+      const ridePots = Math.max(1, Math.ceil(overpayPts / RIDE_POTION_POINTS));
+      overpayDetail =
+        overpayPts > 0
+          ? `Estás a fazer UPGRADE: dás vários pets por um item forte. O dono do ${
+              themTot.count === 1 ? "pet" : "item"
+            } raro exige overpay (~10–15%). Acrescenta ~${Math.round(
+              themWorth * 0.12,
+            )} pts (≈ ${ridePots} Ride Potions) acima do valor dele para ele aceitar.`
+          : `Estás a fazer UPGRADE: já ofereces um overpay saudável (~acima de 10%). Boa hipótese de ele aceitar.`;
+    }
+  }
 
   return {
     kind,
@@ -187,6 +215,9 @@ export function evaluateTrade(you: TradeLine[], them: TradeLine[]): TradeVerdict
     downgrade,
     downgradeDetail,
     counter,
+    upgrade,
+    overpayPts,
+    overpayDetail,
   };
 }
 
@@ -262,6 +293,29 @@ export function suggestCounter(
 
 export const RIDE_POTION_POINTS = 2.5;
 export const RIDE_POTION_USD = 1.2;
+
+/**
+ * Nota de liquidez 1–10: quão rápido vendes o pet por dinheiro real.
+ * Combina a classe de liquidez, a procura e o tier. Um pet caro mas ilíquido
+ * não engana — uma nota baixa avisa que pode demorar semanas a vender.
+ */
+export function liquidityScore(
+  liquidity: string,
+  demand: number,
+  tier: string,
+): number {
+  const liqBase: Record<string, number> = {
+    high: 8,
+    medium: 5,
+    low: 2.5,
+    trash: 0.5,
+  };
+  let score = liqBase[liquidity] ?? 4;
+  score += (demand - 3) * 0.8; // procura 1..5
+  const tierBoost: Record<string, number> = { S: 1.2, A: 0.6, B: 0, C: -0.4, D: -1 };
+  score += tierBoost[tier] ?? 0;
+  return Math.max(1, Math.min(10, Math.round(score * 10) / 10));
+}
 
 export function toRidePots(points: number) {
   return points / RIDE_POTION_POINTS;

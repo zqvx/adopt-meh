@@ -99,6 +99,10 @@ export interface TradeVerdict {
   downgradeDetail: string;
   /** Contra-proposta: pet forte que o outro devia acrescentar/trocar. */
   counter: CounterSuggestion | null;
+  /** Estás a fazer UPGRADE (muitos médios por 1 forte): precisas de overpay. */
+  upgrade: boolean;
+  overpayPts: number;
+  overpayDetail: string;
 }
 
 export interface CounterSuggestion {

@@ -20,6 +20,9 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PetGlyph } from "@/components/trade/PetGlyph";
+import { PetChartModal } from "@/components/trade/PetChartModal";
+import type { Pet } from "@/lib/pets/types";
+import { EggAlert } from "./EggAlert";
 
 function Sparkline({ data, signal }: { data: number[]; signal: "buy" | "hold" | "sell" }) {
   const w = 92;
@@ -61,7 +64,7 @@ function Sparkline({ data, signal }: { data: number[]; signal: "buy" | "hold" | 
   );
 }
 
-function OpportunityRow({ sig }: { sig: QuoteSignal }) {
+function OpportunityRow({ sig, onChart }: { sig: QuoteSignal; onChart: (pet: Pet) => void }) {
   const currency = useTradeStore((s) => s.currency);
   const addLine = useTradeStore((s) => s.addLine);
   const setTab = useTradeStore((s) => s.setTab);
@@ -95,9 +98,23 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
-        <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
+        <button
+          type="button"
+          onClick={() => onChart(pet)}
+          title="Ver gráfico de 30 dias"
+          className="shrink-0 cursor-pointer"
+        >
+          <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
+        </button>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{pet.name}</p>
+          <button
+            type="button"
+            onClick={() => onChart(pet)}
+            className="block truncate text-left text-sm font-medium hover:text-accent"
+            title="Ver gráfico de 30 dias"
+          >
+            {pet.name}
+          </button>
           <p className="flex items-center gap-1 font-mono text-[11px] text-muted uppercase">
             {variantLabel}
             <span title="Procura/hype (Discord)" className="text-accent/80">
@@ -236,7 +253,11 @@ export function LiveBoard() {
   const quotes = useLiveStore((s) => s.quotes);
   const overrides = useLiveStore((s) => s.overrides);
   const hasRealData = useLiveStore((s) => s.hasRealData);
+  const marketMeta = useMarketStore((s) => s.data?.meta) as
+    | { live?: boolean; errors?: string[]; scrapedAt?: string }
+    | undefined;
   const [paused, setPaused] = useState(false);
+  const [chart, setChart] = useState<QuoteSignal | null>(null);
 
   const signals = useMemo(() => {
     return quotes
@@ -295,6 +316,41 @@ export function LiveBoard() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface px-3 py-2 shadow-[var(--shadow-border)]">
+        <p className="flex items-center gap-2 font-mono text-[11px] text-muted">
+          <span
+            className={cn(
+              "flex items-center gap-1 rounded-full px-2 py-0.5",
+              marketMeta?.live ? "bg-accent-dim text-accent" : "bg-surface-2 text-faint",
+            )}
+          >
+            <Radio className={cn("size-3", marketMeta?.live && "animate-pulse")} />
+            {marketMeta?.live
+              ? "PREÇOS AO VIVO"
+              : marketMeta
+                ? "PREÇOS EM CACHE"
+                : "VALORES BASE"}
+          </span>
+          {marketMeta?.live
+            ? "Scraping dos sites OK"
+            : marketMeta
+              ? "Sites indisponíveis agora — uso valores guardados"
+              : "A correr nos valores incluídos"}
+        </p>
+        <p className="font-mono text-[10px] text-faint">
+          {marketMeta?.scrapedAt
+            ? `atualizado ${new Date(marketMeta.scrapedAt).toLocaleString("pt-PT", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`
+            : ""}
+        </p>
+      </div>
+
+      <EggAlert />
+
       <div className="grid gap-2 font-mono text-[11px] sm:grid-cols-3">
         <div className="rounded-lg bg-accent-dim px-3 py-2">
           <span className="text-accent">{buys.length}</span>
@@ -324,9 +380,23 @@ export function LiveBoard() {
           <span className="w-28 text-right sm:w-auto">Sinal</span>
         </div>
         {top.map((sig) => (
-          <OpportunityRow key={sig.quote.key} sig={sig} />
+          <OpportunityRow
+            key={sig.quote.key}
+            sig={sig}
+            onChart={() => setChart(sig)}
+          />
         ))}
       </div>
+
+      {chart ? (
+        <PetChartModal
+          petId={chart.quote.petId}
+          variant={chart.quote.variant}
+          fairUsd={chart.fairUsd}
+          nowUsd={chart.quote.priceUsd}
+          onClose={() => setChart(null)}
+        />
+      ) : null}
 
       <p className="text-[11px] text-faint">
         Simulação para treino de decisão (não são cotações reais da Uplift Games nem
