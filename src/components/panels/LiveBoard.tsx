@@ -165,12 +165,13 @@ function OpportunityRow({ sig }: { sig: QuoteSignal }) {
 function Ticker({ quotes }: { quotes: ReturnType<typeof useLiveStore.getState>["quotes"] }) {
   const currency = useTradeStore((s) => s.currency);
   const feePct = useTradeStore((s) => s.feePct);
+  const overrides = useLiveStore((s) => s.overrides);
   const items = useMemo(() => {
     return quotes
-      .map((q) => analyzeQuote(q, feePct))
+      .map((q) => analyzeQuote(q, feePct, overrides))
       .filter((s): s is QuoteSignal => Boolean(s))
       .slice(0, 14);
-  }, [quotes, feePct]);
+  }, [quotes, feePct, overrides]);
 
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-bg-sunken">
@@ -204,14 +205,16 @@ function Ticker({ quotes }: { quotes: ReturnType<typeof useLiveStore.getState>["
 export function LiveBoard() {
   const feePct = useTradeStore((s) => s.feePct);
   const quotes = useLiveStore((s) => s.quotes);
+  const overrides = useLiveStore((s) => s.overrides);
+  const hasRealData = useLiveStore((s) => s.hasRealData);
   const [paused, setPaused] = useState(false);
 
   const signals = useMemo(() => {
     return quotes
-      .map((q) => analyzeQuote(q, feePct))
+      .map((q) => analyzeQuote(q, feePct, overrides))
       .filter((s): s is QuoteSignal => Boolean(s))
       .sort((a, b) => b.score - a.score);
-  }, [quotes, feePct]);
+  }, [quotes, feePct, overrides]);
 
   const buys = signals.filter((s) => s.signal === "buy");
   const sells = signals.filter((s) => s.signal === "sell");
@@ -229,8 +232,10 @@ export function LiveBoard() {
               Quando comprar e vender
             </h2>
             <p className="text-sm text-muted">
-              Sinais sobre valores de referência comunitários, com taxas de{" "}
-              {feePct.toFixed(0)}% já descontadas. Não há cotações oficiais em tempo real.
+              {hasRealData
+                ? "Preços de referência extraídos por scraping de sites de valores reais (BloxUltra/Eldorado), com volatilidade simulada e taxas de "
+                : "Sinais sobre valores de referência comunitários, com taxas de "}
+              {feePct.toFixed(0)}% já descontadas.
             </p>
           </div>
           <div className="flex items-center gap-2">

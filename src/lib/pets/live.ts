@@ -56,9 +56,9 @@ export function fairUsd(petId: string, variant: Variant): number {
 }
 
 /** Preço inicial determinístico (serve o SSR sem erro de hidratação). */
-export function initQuotes(): LiveQuote[] {
+export function initQuotes(overrides: Record<string, number> = {}): LiveQuote[] {
   return WATCHLIST.map((w) => {
-    const fair = fairUsd(w.petId, w.variant);
+    const fair = marketFair(w.petId, w.variant, overrides);
     const price = fair * (1 + w.bias);
     return {
       key: `${w.petId}-${w.variant}`,
@@ -71,10 +71,28 @@ export function initQuotes(): LiveQuote[] {
   });
 }
 
+/** Valor de referência com overrides do scraping (ou catálogo). */
+function marketFair(
+  petId: string,
+  variant: Variant,
+  overrides: Record<string, number>,
+): number {
+  const catalog = fairUsd(petId, variant);
+  const fr = overrides[petId];
+  if (!fr) return catalog;
+  if (variant === "fr") return fr;
+  const catalogFr = fairUsd(petId, "fr");
+  if (!catalogFr) return catalog;
+  return (catalog / catalogFr) * fr;
+}
+
 /** Avança o feed um tick: random walk com reversão à média do bias. */
-export function tickQuotes(quotes: LiveQuote[]): LiveQuote[] {
+export function tickQuotes(
+  quotes: LiveQuote[],
+  overrides: Record<string, number> = {},
+): LiveQuote[] {
   return quotes.map((q) => {
-    const fair = fairUsd(q.petId, q.variant);
+    const fair = marketFair(q.petId, q.variant, overrides);
     const target = fair * (1 + q.bias);
     const noise = (Math.random() - 0.5) * fair * 0.016;
     const drift = (target - q.priceUsd) * 0.05;
@@ -132,10 +150,14 @@ function liqWeight(liq: Liquidity): number {
   return 0.1;
 }
 
-export function analyzeQuote(quote: LiveQuote, feePct: number): QuoteSignal | null {
+export function analyzeQuote(
+  quote: LiveQuote,
+  feePct: number,
+  overrides: Record<string, number> = {},
+): QuoteSignal | null {
   const pet = getPet(quote.petId);
   if (!pet) return null;
-  const fair = fairUsd(quote.petId, quote.variant);
+  const fair = marketFair(quote.petId, quote.variant, overrides);
   const zones = priceZones(fair, feePct);
   const edge = (zones.netSellUsd - quote.priceUsd) / quote.priceUsd;
   const discount = (fair - quote.priceUsd) / fair;
@@ -172,8 +194,9 @@ export function livePriceUsd(
   quotes: LiveQuote[],
   petId: string,
   variant: Variant,
+  overrides: Record<string, number> = {},
 ): { price: number; live: boolean } {
   const q = quotes.find((row) => row.petId === petId && row.variant === variant);
   if (q) return { price: q.priceUsd, live: true };
-  return { price: fairUsd(petId, variant), live: false };
+  return { price: marketFair(petId, variant, overrides), live: false };
 }

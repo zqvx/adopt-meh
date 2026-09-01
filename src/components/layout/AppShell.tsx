@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { FX } from "@/lib/format";
 import { useLiveStore } from "@/lib/live-store";
+import { marketOverrides, useMarketStore } from "@/lib/market-data";
 import type { Currency } from "@/lib/pets/types";
 import {
   readHistory,
@@ -69,6 +70,21 @@ export function AppShell() {
   const setFeePct = useTradeStore((s) => s.setFeePct);
   const liveStarted = useLiveStore((s) => s.started);
   const startLive = useLiveStore((s) => s.start);
+  const loadMarket = useMarketStore((s) => s.load);
+  const marketData = useMarketStore((s) => s.data);
+  const marketStatus = useMarketStore((s) => s.status);
+  const setOverrides = useLiveStore((s) => s.setOverrides);
+
+  useEffect(() => {
+    loadMarket();
+    // Reconsulta o values.json a cada 30 min (o scraper pode atualizá-lo).
+    const id = window.setInterval(loadMarket, 30 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [loadMarket]);
+
+  useEffect(() => {
+    if (marketData) setOverrides(marketOverrides(marketData));
+  }, [marketData, setOverrides]);
 
   useEffect(() => {
     const prefs = readPrefs();
@@ -152,7 +168,30 @@ export function AppShell() {
             Mercado UE · câmbio ref. 1 € = {(1 / FX.EUR).toFixed(2)} USD · R$
             {(FX.BRL / FX.EUR).toFixed(2)} · taxas 8–12%
           </p>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] sm:flex",
+                marketStatus === "ok"
+                  ? "bg-accent-dim text-accent"
+                  : "bg-surface-2 text-muted",
+              )}
+              title="Fonte dos valores em dinheiro (scraping de sites de referência)"
+            >
+              <Radio
+                className={cn("size-3", marketStatus === "ok" && "animate-pulse")}
+              />
+              {marketStatus === "ok"
+                ? `Valores reais · ${
+                    marketData?.meta?.scrapedAt
+                      ? new Date(marketData.meta.scrapedAt).toLocaleDateString(
+                          "pt-PT",
+                          { day: "2-digit", month: "2-digit" },
+                        )
+                      : "—"
+                  }`
+                : "Valores de referência"}
+            </span>
             <Button
               variant="secondary"
               size="sm"

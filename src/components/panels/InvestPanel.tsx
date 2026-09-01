@@ -217,6 +217,7 @@ function AddPositionForm() {
         useLiveStore.getState().quotes,
         pet.id,
         pet.hasVariants ? "fr" : "regular",
+        useLiveStore.getState().overrides,
       );
       setCost(toUnits(price, unit).toFixed(2));
     }
@@ -346,14 +347,15 @@ export function InvestPanel() {
   const feePct = useTradeStore((s) => s.feePct);
   const positions = useTradeStore((s) => s.positions);
   const quotes = useLiveStore((s) => s.quotes);
+  const overrides = useLiveStore((s) => s.overrides);
 
   const signals = useMemo(
     () =>
       quotes
-        .map((q) => analyzeQuote(q, feePct))
+        .map((q) => analyzeQuote(q, feePct, overrides))
         .filter((s): s is QuoteSignal => Boolean(s))
         .sort((a, b) => b.score - a.score),
-    [quotes, feePct],
+    [quotes, feePct, overrides],
   );
 
   const buys = signals.filter((s) => s.signal === "buy").slice(0, 4);
@@ -365,7 +367,7 @@ export function InvestPanel() {
         const pet = getPet(pos.petId);
         if (!pet) return null;
         const variant: Variant = pet.hasVariants ? pos.variant : "regular";
-        const { price, live } = livePriceUsd(quotes, pos.petId, variant);
+        const { price, live } = livePriceUsd(quotes, pos.petId, variant, overrides);
         const gross = price * pos.qty;
         const net = gross * (1 - feePct / 100);
         const pnlUsd = net - pos.costUsd;
@@ -380,6 +382,7 @@ export function InvestPanel() {
             history: [price],
           },
           feePct,
+          overrides,
         );
         let action: Signal = sig?.signal ?? "hold";
         if (action !== "sell" && pnlPct >= 0.12) action = "sell";
@@ -387,7 +390,7 @@ export function InvestPanel() {
       })
       .filter((p): p is PositionView => Boolean(p))
       .sort((a, b) => b.pnlPct - a.pnlPct);
-  }, [positions, quotes, feePct]);
+  }, [positions, quotes, feePct, overrides]);
 
   const totalCost = holdings.reduce((acc, p) => acc + p.costUsd, 0);
   const totalNet = holdings.reduce((acc, p) => acc + p.netUsd, 0);
