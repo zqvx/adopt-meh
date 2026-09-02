@@ -4,7 +4,7 @@ import { getPet, searchPets, variantsFor } from "@/lib/pets/catalog";
 import { lineValue, liquidityScore } from "@/lib/pets/engine";
 import { readyFromInventory } from "@/lib/pets/craft";
 import { formatMoney, formatPoints, VARIANT_SHORT } from "@/lib/format";
-import { ageLabel, marketPriceFor, useMarketStore } from "@/lib/market-data";
+import { ageLabel, marketPriceFor, resolveMarketUsd, useMarketStore } from "@/lib/market-data";
 import type { InventoryItem } from "@/lib/store";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ import { VerifyPet } from "@/components/verify/VerifyPet";
 function DeadWeight({ onTrade }: { onTrade: () => void }) {
   const inventory = useTradeStore((s) => s.inventory);
   const currency = useTradeStore((s) => s.currency);
+  const marketData = useMarketStore((s) => s.data);
 
   const dead = useMemo(() => {
     return inventory
@@ -25,19 +26,14 @@ function DeadWeight({ onTrade }: { onTrade: () => void }) {
         if (!pet) return null;
         const score = liquidityScore(pet.liquidity, pet.demand, pet.tier);
         if (score >= 4.5) return null; // amarelo/vermelho: < 4.5
-        const val = lineValue({
-          id: it.id,
-          petId: it.petId,
-          variant: it.variant,
-          qty: it.qty,
-        });
-        return { it, pet, score, value: val };
+        const { usd } = resolveMarketUsd(it.petId, it.variant, marketData);
+        return { it, pet, score, usd };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
-      .sort((a, b) => a.score - b.score || b.value.usd - a.value.usd);
-  }, [inventory]);
+      .sort((a, b) => a.score - b.score || b.usd - a.usd);
+  }, [inventory, marketData]);
 
-  const tiedUsd = dead.reduce((s, d) => s + d.value.usd, 0);
+  const tiedUsd = dead.reduce((s, d) => s + d.usd * d.it.qty, 0);
 
   if (inventory.length === 0) return null;
 
@@ -62,19 +58,19 @@ function DeadWeight({ onTrade }: { onTrade: () => void }) {
       </div>
       <p className="text-[12px] text-muted">
         Tens <strong className="text-warn">{dead.length}</strong> pet(s) que valem dinheiro mas
-        quase não se vendem (liquidez &lt; 4.5). Capital preso:{" "}
+        quase não se vendem (liquidez < 4.5). Capital preso:{" "}
         <strong className="text-fg">{formatMoney(tiedUsd, currency)}</strong>. Usa-os como{" "}
         <em>adds</em> para fechar upgrades — despachas a iliquidez para o outro jogador e ficas com
         um pet de topo que gira depressa.
       </p>
       <ul className="mt-3 flex flex-col gap-2">
-        {dead.map(({ it, pet, score, value }) => (
+        {dead.map(({ it, pet, score, usd }) => (
           <li key={it.id} className="flex items-center gap-2.5 rounded-md bg-surface-2 p-2">
             <PetGlyph id={pet.id} glyph={pet.glyph} size="sm" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{pet.name}</p>
               <p className="font-mono text-[11px] text-muted">
-                {formatMoney(value.usd, currency)} · liquidez{" "}
+                {formatMoney(usd * it.qty, currency)} · liquidez{" "}
                 <span className={cn(score < 2.5 ? "text-loss" : "text-warn")}>
                   {score.toFixed(1)}/10
                 </span>
@@ -123,8 +119,11 @@ function InventoryRow({ item }: { item: InventoryItem }) {
     variant: item.variant,
     qty: 1,
   });
-  const market = marketPriceFor(pet.id, item.variant, marketData);
-  const marketDrift = market && value.usd > 0 ? Math.abs(market.usd - value.usd) / value.usd : 0;
+  const marketUsd = marketPriceFor(pet.id, marketData, item.variant);
+  const displayUsd = marketUsd != null && marketUsd > 0 ? marketUsd : value.usd;
+  const fromMarket = marketUsd != null && marketUsd > 0;
+  const marketDrift =
+    fromMarket && value.usd > 0 ? Math.abs(marketUsd! - value.usd) / value.usd : 0;
   const trash = pet.liquidity === "trash";
 
   return (
@@ -136,19 +135,14 @@ function InventoryRow({ item }: { item: InventoryItem }) {
             <p className="truncate text-sm font-medium">{pet.name}</p>
             <p className="font-mono text-[11px] text-muted tabular-nums">
               {VARIANT_SHORT[item.variant]} · {formatPoints(value.points)} pts ·{" "}
-              {formatMoney(value.usd, currency)}
+              <span className={fromMarket ? "text-accent" : undefined}>
+                {formatMoney(displayUsd, currency)}
+              </span>
+              {fromMarket ? " · mkt" : ""}
             </p>
-            {market ? (
-              <p
-                className={cn(
-                  "font-mono text-[10px] tabular-nums",
-                  marketDrift > 0.15 ? "text-warn" : "text-faint",
-                )}
-              >
-                Mercado: {formatMoney(market.usd, currency)}
-                {market.source ? ` · ${market.source}` : ""}
-                {ageLabel(market.scrapedAt) ? ` · ${ageLabel(market.scrapedAt)}` : ""}
-                {marketDrift > 0.15 ? " · desatualizado no catálogo" : ""}
+            {fromMarket && marketDrift > 0.15 ? (
+              <p className="font-mono text-[10px] tabular-nums text-warn">
+                Catálogo: {formatMoney(value.usd, currency)} · desatualizado
               </p>
             ) : null}
           </div>
@@ -213,24 +207,24 @@ export function InventoryPanel() {
   const [picked, setPicked] = useState<string | null>(null);
   const matches = useMemo(() => searchPets(query, 8), [query]);
 
-  // Valor de mercado do inventário inteiro com preços de scraping (quando o
-  // pet tem). Mostra também quantos itens têm preço online.
   const marketTotal = useMemo(() => {
     let usd = 0;
     let liveCount = 0;
     for (const it of inventory) {
-      const market = marketPriceFor(it.petId, it.variant, marketData);
+      const market = marketPriceFor(it.petId, marketData, it.variant);
       const catalog = lineValue({ id: it.id, petId: it.petId, variant: it.variant, qty: 1 });
-      usd += (market?.usd ?? catalog.usd) * it.qty;
-      if (market) liveCount += it.qty;
+      if (market != null && market > 0) {
+        usd += market * it.qty;
+        liveCount += it.qty;
+      } else {
+        usd += catalog.usd * it.qty;
+      }
     }
     if (liveCount === 0) return null;
     return { usd, liveCount };
   }, [inventory, marketData]);
   const marketAge = ageLabel(marketData?.meta?.scrapedAt);
 
-  // Leva os pets ilíquidos (peso morto) para o nosso lado da troca, para
-  // serem usados como adds num upgrade.
   function deadToTrade() {
     for (const it of inventory) {
       const pet = getPet(it.petId);
@@ -245,11 +239,10 @@ export function InventoryPanel() {
       sum + lineValue({ id: it.id, petId: it.petId, variant: it.variant, qty: it.qty }).points,
     0,
   );
-  const totalUsd = inventory.reduce(
-    (sum, it) =>
-      sum + lineValue({ id: it.id, petId: it.petId, variant: it.variant, qty: it.qty }).usd,
-    0,
-  );
+  const totalUsd = inventory.reduce((sum, it) => {
+    const { usd } = resolveMarketUsd(it.petId, it.variant, marketData);
+    return sum + usd * it.qty;
+  }, 0);
 
   return (
     <section className="flex flex-col gap-4">
