@@ -2,6 +2,7 @@ import { Landmark, ReceiptText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PETS, searchPets, variantsFor } from "@/lib/pets/catalog";
 import { FEE_PRESETS, RIDE_POTION_USD } from "@/lib/pets/engine";
+import { resolveMarketUsd, useMarketStore } from "@/lib/market-data";
 import {
   CURRENCY_PREFIX,
   FX,
@@ -31,6 +32,7 @@ export function Arbitrage() {
   const currency = useTradeStore((s) => s.currency);
   const feePct = useTradeStore((s) => s.feePct);
   const setFeePct = useTradeStore((s) => s.setFeePct);
+  const marketData = useMarketStore((s) => s.data);
   const [query, setQuery] = useState("Shadow Dragon");
   const [picked, setPicked] = useState<Pet>(
     () => PETS.find((p) => p.id === "shadow-dragon") ?? PETS[0],
@@ -40,11 +42,16 @@ export function Arbitrage() {
   const [costUnit, setCostUnit] = useState<CostUnit>("EUR");
 
   const matches = useMemo(() => searchPets(query, 6), [query]);
-  const value = picked.values[picked.hasVariants ? variant : "regular"];
+  const activeVariant: Variant = picked.hasVariants ? variant : "regular";
+  const catalogValue = picked.values[activeVariant];
+  const { usd: gross, fromMarket } = resolveMarketUsd(
+    picked.id,
+    activeVariant,
+    marketData,
+  );
   const costNum = Number.parseFloat(cost.replace(",", ".")) || 0;
   const costUsd = toUsd(costNum, costUnit);
   const fee = feePct / 100;
-  const gross = value.usd;
   const net = gross * (1 - fee);
   const feeUsd = gross * fee;
   const grossMargin = gross - costUsd;
@@ -61,7 +68,7 @@ export function Arbitrage() {
         <h2 className="text-lg font-medium tracking-tight">Calculadora de arbitragem</h2>
         <p className="text-sm text-muted">
           Insere o preço de compra. Descontamos a taxa do marketplace e mostramos a
-          margem real.
+          margem real com base no preço de mercado (não no catálogo inflacionado).
         </p>
       </header>
 
@@ -203,7 +210,12 @@ export function Arbitrage() {
               <p className="font-medium">{picked.name}</p>
               <p className="font-mono text-xs text-muted">
                 {picked.hasVariants ? VARIANT_SHORT[variant] : picked.category} ·{" "}
-                {formatPoints(value.points)} pts
+                {formatPoints(catalogValue.points)} pts
+                {fromMarket ? (
+                  <span className="ml-1.5 text-accent">· mercado</span>
+                ) : (
+                  <span className="ml-1.5 text-faint">· catálogo</span>
+                )}
               </p>
             </div>
           </div>
