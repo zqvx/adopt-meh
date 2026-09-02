@@ -3,6 +3,11 @@
     "scrapedAt": "2026-09-01T00:00:00Z",
     "currency": "USD",
     "variant": "fr",
+    "live": false,
+    "errors": [
+      "bloxultra: fetch failed",
+      "eldorado: fetch failed"
+    ],
     "sources": [
       {
         "id": "bloxultra",
@@ -11,11 +16,20 @@
       },
       {
         "id": "eldorado",
-        "name": "Eldorado (intervalos de mercado)",
-        "url": "https://www.eldorado.gg/blog/adopt-me-trading-values/"
+        "name": "Eldorado (intervalos de mercado de pets)",
+        "url": "https://www.eldorado.gg/adopt-me-pets/i/201-2-0?searchQuery=&offerSortingCriterion=Price&isAscending=true"
+      },
+      {
+        "id": "gameguide",
+        "name": "Game.Guide (verificação por pet)",
+        "url": "https://www.game.guide/adopt-me-value-list"
+      },
+      {
+        "id": "starpets",
+        "name": "Starpets.gg (preços da comunidade PT)",
+        "url": "https://starpets.gg/pt/adopt-me"
       }
-    ],
-    "note": "Valores reais de mercado em dinheiro, set. 2026. frUsd = BloxUltra; nfrUsd/mfrUsd = ponto médio dos intervalos Eldorado. Gerado por scripts/scrape-values.mjs."
+    ]
   },
   "pets": {
     "bat-dragon": {
@@ -127,7 +141,9 @@
       "lowUsd": 11.4,
       "highUsd": 17.6,
       "source": "eldorado",
-      "src": { "eldorado": 13 }
+      "src": {
+        "eldorado": 13
+      }
     },
     "tree-kangaroo": {
       "frUsd": 2.9,
