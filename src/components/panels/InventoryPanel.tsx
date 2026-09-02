@@ -58,7 +58,7 @@ function DeadWeight({ onTrade }: { onTrade: () => void }) {
       </div>
       <p className="text-[12px] text-muted">
         Tens <strong className="text-warn">{dead.length}</strong> pet(s) que valem dinheiro mas
-        quase não se vendem (liquidez < 4.5). Capital preso:{" "}
+        quase não se vendem (liquidez {"<"} 4.5). Capital preso:{" "}
         <strong className="text-fg">{formatMoney(tiedUsd, currency)}</strong>. Usa-os como{" "}
         <em>adds</em> para fechar upgrades — despachas a iliquidez para o outro jogador e ficas com
         um pet de topo que gira depressa.
