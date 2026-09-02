@@ -1,1 +1,228 @@
-PLACEHOLDER
+{
+  "meta": {
+    "scrapedAt": "2026-09-02T02:16:13.459Z",
+    "currency": "USD",
+    "variant": "fr",
+    "live": true,
+    "errors": [],
+    "sources": [
+      {
+        "id": "bloxultra",
+        "name": "BloxUltra (preços de loja em dinheiro)",
+        "url": "https://bloxultra.com/adopt-me-values"
+      },
+      {
+        "id": "eldorado",
+        "name": "Eldorado (intervalos de mercado de pets)",
+        "url": "https://www.eldorado.gg/blog/adopt-me-en/adopt-me-trading-values/"
+      },
+      {
+        "id": "gameguide",
+        "name": "Game.Guide (verificação por pet)",
+        "url": "https://www.game.guide/adopt-me-value-list"
+      },
+      {
+        "id": "starpets",
+        "name": "Starpets.gg (preços da comunidade PT)",
+        "url": "https://starpets.gg/pt/adopt-me"
+      }
+    ],
+    "stats": {
+      "bloxultra": 12,
+      "eldorado": 10
+    }
+  },
+  "pets": {
+    "bat-dragon": {
+      "frUsd": 355,
+      "nfrUsd": 842.5,
+      "mfrUsd": 2025,
+      "lowUsd": 250,
+      "highUsd": 550,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 355,
+        "bloxultra": 412.51
+      },
+      "storeUsd": 412.51
+    },
+    "shadow-dragon": {
+      "frUsd": 216,
+      "nfrUsd": 551.5,
+      "mfrUsd": 1145,
+      "lowUsd": 160,
+      "highUsd": 320,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 216,
+        "bloxultra": 293.95
+      },
+      "storeUsd": 293.95
+    },
+    "giraffe": {
+      "frUsd": 155,
+      "nfrUsd": 363,
+      "mfrUsd": 1145,
+      "lowUsd": 120,
+      "highUsd": 220,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 155,
+        "bloxultra": 198.33
+      },
+      "storeUsd": 198.33
+    },
+    "frost-dragon": {
+      "frUsd": 108,
+      "nfrUsd": 250,
+      "mfrUsd": 662,
+      "lowUsd": 80,
+      "highUsd": 160,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 108,
+        "bloxultra": 153.29
+      },
+      "storeUsd": 153.29
+    },
+    "owl": {
+      "frUsd": 101.5,
+      "nfrUsd": 287.5,
+      "mfrUsd": 1005,
+      "lowUsd": 70,
+      "highUsd": 160,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 101.5,
+        "bloxultra": 129.51
+      },
+      "storeUsd": 129.51
+    },
+    "parrot": {
+      "frUsd": 77.5,
+      "nfrUsd": 165.5,
+      "mfrUsd": 640,
+      "lowUsd": 60,
+      "highUsd": 110,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 77.5,
+        "bloxultra": 108.58
+      },
+      "storeUsd": 108.58
+    },
+    "crow": {
+      "frUsd": 79.05,
+      "nfrUsd": 179,
+      "mfrUsd": 603.5,
+      "lowUsd": 57,
+      "highUsd": 120,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 79.05,
+        "bloxultra": 93.31
+      },
+      "storeUsd": 93.31
+    },
+    "evil-unicorn": {
+      "frUsd": 42.41,
+      "source": "bloxultra-est",
+      "src": {
+        "bloxultra": 75.2
+      },
+      "storeUsd": 75.2,
+      "lowUsd": 36.1,
+      "highUsd": 54.14
+    },
+    "african-wild-dog": {
+      "frUsd": 68.55,
+      "nfrUsd": 267.5,
+      "mfrUsd": 659.5,
+      "lowUsd": 57,
+      "highUsd": 90,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 68.55
+      }
+    },
+    "giant-panda": {
+      "frUsd": 64,
+      "nfrUsd": 227,
+      "mfrUsd": 735,
+      "lowUsd": 50,
+      "highUsd": 90,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 64
+      }
+    },
+    "balloon-unicorn": {
+      "frUsd": 88.5,
+      "nfrUsd": 243.5,
+      "mfrUsd": 767.5,
+      "lowUsd": 50,
+      "highUsd": 160,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 88.5
+      }
+    },
+    "arctic-reindeer": {
+      "frUsd": 21.31,
+      "source": "bloxultra-est",
+      "src": {
+        "bloxultra": 37.79
+      },
+      "storeUsd": 37.79,
+      "lowUsd": 18.14,
+      "highUsd": 27.21
+    },
+    "cow": {
+      "frUsd": 14.09,
+      "source": "bloxultra-est",
+      "src": {
+        "bloxultra": 24.99
+      },
+      "storeUsd": 24.99,
+      "lowUsd": 12,
+      "highUsd": 17.99
+    },
+    "turtle": {
+      "frUsd": 11.75,
+      "source": "bloxultra-est",
+      "src": {
+        "bloxultra": 20.84
+      },
+      "storeUsd": 20.84,
+      "lowUsd": 10,
+      "highUsd": 15
+    },
+    "kangaroo": {
+      "frUsd": 9.35,
+      "source": "bloxultra-est",
+      "src": {
+        "bloxultra": 16.59
+      },
+      "storeUsd": 16.59,
+      "lowUsd": 7.96,
+      "highUsd": 11.94
+    },
+    "sugar-glider": {
+      "frUsd": 13,
+      "nfrUsd": 39,
+      "mfrUsd": 123.5,
+      "lowUsd": 11.4,
+      "highUsd": 17.6,
+      "source": "eldorado",
+      "src": {
+        "eldorado": 13
+      }
+    },
+    "tree-kangaroo": {
+      "frUsd": 2.9,
+      "lowUsd": 2.3,
+      "highUsd": 3.5,
+      "source": "marketplace-cash"
+    }
+  }
+}
