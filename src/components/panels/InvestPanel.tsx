@@ -62,7 +62,22 @@ function RecommendCard({ sig }: { sig: QuoteSignal }) {
         <Badge tone={meta.tone}>{meta.label}</Badge>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-[11px]">
+      <div className="mt-3 grid grid-cols-3 gap-1.5 font-mono text-[11px]">
+        <div className="rounded bg-surface-2 px-2 py-1.5">
+          <p className="text-faint">Rápida</p>
+          <p className="tabular-nums text-muted">{formatMoney(sig.zones.quickSellUsd, currency)}</p>
+        </div>
+        <div className="rounded bg-surface-2 px-2 py-1.5">
+          <p className="text-faint">Justa</p>
+          <p className="tabular-nums text-accent">{formatMoney(sig.zones.fairSellUsd, currency)}</p>
+        </div>
+        <div className="rounded bg-surface-2 px-2 py-1.5">
+          <p className="text-faint">Ambiciosa</p>
+          <p className="tabular-nums text-warn">{formatMoney(sig.zones.ambitiousSellUsd, currency)}</p>
+        </div>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-[11px]">
         <div className="rounded bg-surface-2 px-2 py-1.5">
           <p className="text-faint">Compra abaixo de</p>
           <p className="text-accent tabular-nums">{formatMoney(sig.zones.buyBelowUsd, currency)}</p>
@@ -354,14 +369,15 @@ export function InvestPanel() {
   const positions = useTradeStore((s) => s.positions);
   const quotes = useLiveStore((s) => s.quotes);
   const overrides = useLiveStore((s) => s.overrides);
+  const ranges = useLiveStore((s) => s.ranges);
 
   const signals = useMemo(
     () =>
       quotes
-        .map((q) => analyzeQuote(q, feePct, overrides))
+        .map((q) => analyzeQuote(q, feePct, overrides, ranges))
         .filter((s): s is QuoteSignal => Boolean(s))
         .sort((a, b) => b.score - a.score),
-    [quotes, feePct, overrides],
+    [quotes, feePct, overrides, ranges],
   );
 
   const buys = signals.filter((s) => s.signal === "buy").slice(0, 4);
@@ -389,6 +405,7 @@ export function InvestPanel() {
           },
           feePct,
           overrides,
+          ranges,
         );
         let action: Signal = sig?.signal ?? "hold";
         if (action !== "sell" && pnlPct >= 0.12) action = "sell";
@@ -396,7 +413,7 @@ export function InvestPanel() {
       })
       .filter((p): p is PositionView => Boolean(p))
       .sort((a, b) => b.pnlPct - a.pnlPct);
-  }, [positions, quotes, feePct, overrides]);
+  }, [positions, quotes, feePct, overrides, ranges]);
 
   const totalCost = holdings.reduce((acc, p) => acc + p.costUsd, 0);
   const totalNet = holdings.reduce((acc, p) => acc + p.netUsd, 0);
