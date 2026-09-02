@@ -98,9 +98,6 @@ function OpportunityRow({
     sig.signal === "sell"
       ? { value: sig.overval, prefix: "+" }
       : { value: sig.edge, prefix: sig.edge > 0 ? "+" : "−" };
-  // MODO HARDCORE: dinheiro líquido que entra/sai do bolso, por pet, em €.
-  // Compra: venda líquida (após taxas) menos o que pagas agora.
-  // Venda: preço pedido acima do valor justo (o que cobras a mais).
   const eur = FX.EUR;
   const profitEur =
     sig.signal === "sell"
@@ -249,12 +246,13 @@ function Ticker({ quotes }: { quotes: ReturnType<typeof useLiveStore.getState>["
   const currency = useTradeStore((s) => s.currency);
   const feePct = useTradeStore((s) => s.feePct);
   const overrides = useLiveStore((s) => s.overrides);
+  const ranges = useLiveStore((s) => s.ranges);
   const items = useMemo(() => {
     return quotes
-      .map((q) => analyzeQuote(q, feePct, overrides))
+      .map((q) => analyzeQuote(q, feePct, overrides, ranges))
       .filter((s): s is QuoteSignal => Boolean(s))
       .slice(0, 14);
-  }, [quotes, feePct, overrides]);
+  }, [quotes, feePct, overrides, ranges]);
 
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-bg-sunken">
@@ -289,31 +287,26 @@ export function LiveBoard() {
   const feePct = useTradeStore((s) => s.feePct);
   const quotes = useLiveStore((s) => s.quotes);
   const overrides = useLiveStore((s) => s.overrides);
+  const ranges = useLiveStore((s) => s.ranges);
   const hasRealData = useLiveStore((s) => s.hasRealData);
   const marketMeta = useMarketStore((s) => s.data?.meta) as
     | { live?: boolean; errors?: string[]; scrapedAt?: string }
     | undefined;
-  // Estado dos preços: os dados chegam do scraper automático (cron no GitHub)
-  // ou do endpoint local. Verdes só se a recolha tiver sido nas últimas 12h.
   const priceState: "live" | "cache" | "base" = (() => {
     if (!marketMeta) return "base";
     const t = marketMeta.scrapedAt ? Date.parse(marketMeta.scrapedAt) : NaN;
     const fresh =
       Number.isFinite(t) && Date.now() - t < 12 * 60 * 60 * 1000;
-    // live:false = nenhuma fonte respondeu na última recolha (mesmo que o
-    // ficheiro tenha sido reescrito). Nesse caso nunca mostramos "atualizado".
     if (fresh && marketMeta.live !== false) return "live";
     return "cache";
   })();
   const [paused, setPaused] = useState(false);
-  /** Cópia das cotações no momento em que se pausou — é o que se mostra. */
   const [frozen, setFrozen] = useState<QuoteSignal[] | null>(null);
   const [chart, setChart] = useState<QuoteSignal | null>(null);
   const [snipe, setSnipe] = useState<{ petId: string; variant: import("@/lib/pets/types").Variant } | null>(null);
   const snipeRef = useRef<HTMLDivElement>(null);
   const scrollTimer = useRef<number | null>(null);
 
-  // Sem isto, o scroll disparava depois de o painel sair de cena.
   useEffect(
     () => () => {
       if (scrollTimer.current !== null) window.clearTimeout(scrollTimer.current);
@@ -332,16 +325,11 @@ export function LiveBoard() {
 
   const signals = useMemo(() => {
     return quotes
-      .map((q) => analyzeQuote(q, feePct, overrides))
+      .map((q) => analyzeQuote(q, feePct, overrides, ranges))
       .filter((s): s is QuoteSignal => Boolean(s))
       .sort((a, b) => b.score - a.score);
-  }, [quotes, feePct, overrides]);
+  }, [quotes, feePct, overrides, ranges]);
 
-  /**
-   * Pausar tem de congelar os sinais a sério: antes só escondia o ticker e a
-   * tabela continuava a mexer a cada 2,4 s, por isso não dava para ler uma
-   * linha com atenção.
-   */
   function togglePause() {
     setPaused((wasPaused) => {
       setFrozen(wasPaused ? null : signals);
