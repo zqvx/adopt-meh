@@ -28,12 +28,16 @@ export const SOURCES = {
     url: "https://bloxultra.com/adopt-me-values",
   },
   eldorado: {
-    name: "Eldorado (intervalos de mercado)",
-    url: "https://www.eldorado.gg/blog/adopt-me-trading-values/",
+    name: "Eldorado (intervalos de mercado de pets)",
+    url: "https://www.eldorado.gg/adopt-me-pets/i/201-2-0?searchQuery=&offerSortingCriterion=Price&isAscending=true",
   },
   gameguide: {
     name: "Game.Guide (verificação por pet)",
     url: "https://www.game.guide/adopt-me-value-list",
+  },
+  starpets: {
+    name: "Starpets.gg (preços da comunidade PT)",
+    url: "https://starpets.gg/pt/adopt-me",
   },
 };
 
@@ -195,22 +199,6 @@ const GG_LABELS = [
   "Ride",
 ];
 
-/** "2.9K" -> 2900 · "1,0K" -> 1000 · "946" -> 946 */
-export function parseGgNumber(raw) {
-  const m = /^([0-9]+(?:[.,][0-9]+)?)\s*([KM])?$/i.exec(raw.trim());
-  if (!m) return null;
-  let n = Number(m[1].replace(",", "."));
-  const suffix = m[2]?.toUpperCase();
-  if (suffix === "K") n *= 1000;
-  if (suffix === "M") n *= 1_000_000;
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 10) / 10 : null;
-}
-
-/**
- * Extrai a tabela "Trading Values" (todas as variantes) do HTML da página de
- * um pet na Game.Guide. É tolerante: se uma variante faltar no HTML, simples-
- * mente não aparece no resultado.
- */
 export function parseGameGuide(html) {
   const text = toText(html).replace(/[–—]/g, "-");
   const start = text.indexOf("Trading Values");
