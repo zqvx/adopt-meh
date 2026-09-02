@@ -13,7 +13,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { FX } from "@/lib/format";
 import { useLiveStore } from "@/lib/live-store";
-import { marketOverrides, useMarketStore } from "@/lib/market-data";
+import { marketOverrides, marketRanges, useMarketStore } from "@/lib/market-data";
 import { recordNetWorth } from "@/lib/net-worth";
 import { lineValue } from "@/lib/pets/engine";
 import type { Currency } from "@/lib/pets/types";
@@ -114,7 +114,9 @@ export function AppShell() {
   }, [loadMarket]);
 
   useEffect(() => {
-    if (marketData) setOverrides(marketOverrides(marketData));
+    if (marketData) {
+      setOverrides(marketOverrides(marketData), marketRanges(marketData));
+    }
   }, [marketData, setOverrides]);
 
   useEffect(() => {
