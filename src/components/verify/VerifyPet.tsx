@@ -8,7 +8,7 @@ import { ExternalLink, SearchCheck } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type { Pet, Variant } from "@/lib/pets/types";
 import { formatMoney } from "@/lib/format";
-import { ageLabel, marketPriceFor, useMarketStore } from "@/lib/market-data";
+import { ageLabel, resolveMarketUsd, useMarketStore } from "@/lib/market-data";
 import { GG_VARIANT_LABEL, VERIFY_LINKS, ggToUsd, type VerifyResponse } from "@/lib/verify";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -57,10 +57,8 @@ export function VerifyPet({ pet, defaultOpen = false }: { pet: Pet; defaultOpen?
   const appPrices = useMemo(() => {
     const out: Partial<Record<Variant, { usd: number; live: boolean }>> = {};
     for (const v of CORE_VARIANTS) {
-      const market = marketPriceFor(pet.id, v, marketData);
-      out[v] = market
-        ? { usd: market.usd, live: true }
-        : { usd: pet.values[v]?.usd ?? 0, live: false };
+      const resolved = resolveMarketUsd(pet.id, v, marketData);
+      out[v] = { usd: resolved.usd, live: resolved.fromMarket };
     }
     return out;
   }, [pet, marketData]);

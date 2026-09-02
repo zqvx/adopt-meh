@@ -30,6 +30,17 @@ export interface MarketData {
   pets: Record<string, MarketPetRow>;
 }
 
+/** Snapshot de recolha do scraper (scripts/price-history.mjs): FR USD por pet. */
+export interface PriceSnapshot {
+  t: number;
+  p: Record<string, number>;
+}
+
+/** Histórico REAL de preços — public/data/price-history.json. */
+export interface PriceHistory {
+  snapshots: PriceSnapshot[];
+}
+
 export type MarketStatus = "idle" | "loading" | "ok" | "error";
 
 interface HypeEntry {
@@ -40,6 +51,7 @@ interface HypeEntry {
 interface MarketState {
   data: MarketData | null;
   hype: Record<string, HypeEntry> | null;
+  history: PriceHistory | null;
   status: MarketStatus;
   error: string | null;
   load: () => Promise<void>;
@@ -58,13 +70,15 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 export const useMarketStore = create<MarketState>((set) => ({
   data: null,
   hype: null,
+  history: null,
   status: "idle",
   error: null,
   load: async () => {
     set({ status: "loading", error: null });
-    const [values, hype] = await Promise.all([
+    const [values, hype, history] = await Promise.all([
       fetchJson<MarketData>("/data/values.json"),
       fetchJson<Record<string, HypeEntry>>("/data/hype.json"),
+      fetchJson<PriceHistory>("/data/price-history.json"),
     ]);
     if (!values || !values.pets) {
       set({ status: "error", error: "values.json indisponível", data: null });
@@ -73,6 +87,8 @@ export const useMarketStore = create<MarketState>((set) => ({
     set({
       data: values,
       hype: hype ?? null,
+      history:
+        history && Array.isArray(history.snapshots) ? history : null,
       status: "ok",
       error: null,
     });
@@ -185,6 +201,43 @@ export function marketBandFor(
 ): MarketRange | null {
   const ranges = marketRanges(data);
   return ranges[petId] ?? null;
+}
+
+export interface PriceSeriesPoint {
+  daysAgo: number;
+  price: number;
+  t: number;
+}
+
+/**
+ * Série diária (mais antiga → mais recente) a partir do histórico REAL
+ * acumulado pelas recolhas automáticas (a cada 6h pelo scraper).
+ * Devolve null quando há menos de 2 pontos no último mês — a UI cai nesse
+ * caso para a série simulada.
+ */
+export function realPriceSeries(
+  history: PriceHistory | null,
+  petId: string,
+): PriceSeriesPoint[] | null {
+  const snaps = history?.snapshots;
+  if (!snaps || snaps.length < 2) return null;
+  const DAY = 86_400_000;
+  const today = Math.floor(Date.now() / DAY);
+  const out: PriceSeriesPoint[] = [];
+  for (const s of snaps) {
+    const usd = s.p?.[petId];
+    if (typeof usd !== "number" || !Number.isFinite(usd) || usd <= 0) continue;
+    const daysAgo = today - Math.floor(s.t / DAY);
+    if (daysAgo < 0 || daysAgo > 30) continue;
+    // Um ponto por dia; os snapshots vêm do mais antigo para o mais recente,
+    // por isso o último do dia é o que fica.
+    const existing = out.find((o) => o.daysAgo === daysAgo);
+    if (existing) existing.price = usd;
+    else out.push({ daysAgo, price: usd, t: s.t });
+  }
+  if (out.length < 2) return null;
+  out.sort((a, b) => b.daysAgo - a.daysAgo);
+  return out;
 }
 
 /** Mediana do rácio USD/ponto entre pets com preço de mercado + pontos no catálogo. */
