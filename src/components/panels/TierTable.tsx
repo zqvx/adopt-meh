@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { PETS } from "@/lib/pets/catalog";
 import { liquidityScore } from "@/lib/pets/engine";
+import { marketPriceFor, useMarketStore } from "@/lib/market-data";
 import { formatMoney, formatPoints, VARIANT_SHORT } from "@/lib/format";
-import type { Tier } from "@/lib/pets/types";
+import type { Tier, Variant } from "@/lib/pets/types";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -41,10 +42,39 @@ function Demand({ n }: { n: number }) {
   );
 }
 
+function PriceCell({
+  petId,
+  variant,
+  points,
+  catalogUsd,
+  currency,
+}: {
+  petId: string;
+  variant: Variant;
+  points: number;
+  catalogUsd: number;
+  currency: "USD" | "EUR" | "BRL";
+}) {
+  const data = useMarketStore((s) => s.data);
+  const market = marketPriceFor(petId, data, variant);
+  const usd = market != null && market > 0 ? market : catalogUsd;
+  const fromMarket = market != null && market > 0;
+  return (
+    <>
+      <span className="block">{formatPoints(points)}</span>
+      <span className={cn("text-[11px]", fromMarket ? "text-accent" : "text-muted")}>
+        {formatMoney(usd, currency)}
+        {fromMarket ? " · mkt" : ""}
+      </span>
+    </>
+  );
+}
+
 export function TierTable() {
   const currency = useTradeStore((s) => s.currency);
   const addLine = useTradeStore((s) => s.addLine);
   const setTab = useTradeStore((s) => s.setTab);
+  const marketStatus = useMarketStore((s) => s.status);
   const [tier, setTier] = useState<Tier | "ALL">("ALL");
   const [q, setQ] = useState("");
 
@@ -69,7 +99,8 @@ export function TierTable() {
           </p>
           <h2 className="text-lg font-medium tracking-tight">Tabela de preços</h2>
           <p className="text-sm text-muted">
-            High-tiers e liquidez. Clica numa linha para adicionar FR ao teu lado.
+            High-tiers e liquidez. Preços em verde vêm do mercado real
+            {marketStatus === "ok" ? " (scrape)" : ""}. Clica numa linha para adicionar FR.
           </p>
         </div>
         <Input
@@ -132,31 +163,36 @@ export function TierTable() {
                 </td>
                 <td className="px-3 py-2.5 font-mono text-muted">{pet.tier}</td>
                 <td className="px-3 py-2.5 font-mono tabular-nums">
-                  <span className="block">{formatPoints(pet.values.fr.points)}</span>
-                  <span className="text-[11px] text-muted">
-                    {formatMoney(pet.values.fr.usd, currency)}
-                  </span>
+                  <PriceCell
+                    petId={pet.id}
+                    variant="fr"
+                    points={pet.values.fr.points}
+                    catalogUsd={pet.values.fr.usd}
+                    currency={currency}
+                  />
                 </td>
                 <td className="px-3 py-2.5 font-mono tabular-nums">
                   {pet.hasVariants ? (
-                    <>
-                      <span className="block">{formatPoints(pet.values.nfr.points)}</span>
-                      <span className="text-[11px] text-muted">
-                        {formatMoney(pet.values.nfr.usd, currency)}
-                      </span>
-                    </>
+                    <PriceCell
+                      petId={pet.id}
+                      variant="nfr"
+                      points={pet.values.nfr.points}
+                      catalogUsd={pet.values.nfr.usd}
+                      currency={currency}
+                    />
                   ) : (
                     <span className="text-faint">—</span>
                   )}
                 </td>
                 <td className="px-3 py-2.5 font-mono tabular-nums">
                   {pet.hasVariants ? (
-                    <>
-                      <span className="block">{formatPoints(pet.values.mfr.points)}</span>
-                      <span className="text-[11px] text-muted">
-                        {formatMoney(pet.values.mfr.usd, currency)}
-                      </span>
-                    </>
+                    <PriceCell
+                      petId={pet.id}
+                      variant="mfr"
+                      points={pet.values.mfr.points}
+                      catalogUsd={pet.values.mfr.usd}
+                      currency={currency}
+                    />
                   ) : (
                     <span className="text-faint">—</span>
                   )}
@@ -173,8 +209,8 @@ export function TierTable() {
         </table>
       </div>
       <p className="mt-3 text-xs text-faint">
-        Valores de referência comunitários (estilo Elvebredd / marketplaces). Não
-        afiliado à Uplift Games.
+        Valores com · mkt vêm do scrape de mercado (Eldorado/BloxUltra). Os restantes são
+        referência de catálogo. Não afiliado à Uplift Games.
       </p>
     </section>
   );
