@@ -13,9 +13,14 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { FX } from "@/lib/format";
 import { useLiveStore } from "@/lib/live-store";
-import { marketOverrides, marketRanges, useMarketStore } from "@/lib/market-data";
+import {
+  marketOverrides,
+  marketRanges,
+  resolveMarketUsd,
+  useMarketStore,
+} from "@/lib/market-data";
 import { recordNetWorth } from "@/lib/net-worth";
-import { lineValue } from "@/lib/pets/engine";
+import { getPet } from "@/lib/pets/catalog";
 import type { Currency } from "@/lib/pets/types";
 import { readHistory, readInventory, readPositions, readPrefs, useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -90,21 +95,16 @@ export function AppShell() {
 
   const inventory = useTradeStore((s) => s.inventory);
 
-  // Regista o património do dia (para o gráfico do separador Investir).
+  // Regista o património do dia com preços de mercado (não catálogo).
   useEffect(() => {
-    const totalUsd = inventory.reduce(
-      (sum, it) =>
-        sum +
-        lineValue({
-          id: it.id,
-          petId: it.petId,
-          variant: it.variant,
-          qty: it.qty,
-        }).usd,
-      0,
-    );
+    const totalUsd = inventory.reduce((sum, it) => {
+      const pet = getPet(it.petId);
+      const variant = pet?.hasVariants ? it.variant : "regular";
+      const { usd } = resolveMarketUsd(it.petId, variant, marketData);
+      return sum + usd * it.qty;
+    }, 0);
     if (totalUsd > 0) recordNetWorth(totalUsd);
-  }, [inventory]);
+  }, [inventory, marketData]);
 
   useEffect(() => {
     loadMarket();
