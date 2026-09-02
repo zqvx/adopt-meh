@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FX } from "@/lib/format";
 import { useLiveStore } from "@/lib/live-store";
+import { resolveMarketUsd, useMarketStore } from "@/lib/market-data";
 import { decayPrice, useP2PStore, QUICK_DAYS, daysListed } from "@/lib/p2p";
 import { buyTargetEur } from "@/lib/p2p-ad";
 import { getPet } from "@/lib/pets/catalog";
-import { lineValue } from "@/lib/pets/engine";
 import { useTradeStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +42,7 @@ export function MorningBriefing() {
   const setTab = useTradeStore((s) => s.setTab);
   const inventory = useTradeStore((s) => s.inventory);
   const quotes = useLiveStore((s) => s.quotes);
+  const marketData = useMarketStore((s) => s.data);
 
   useEffect(() => {
     hydrate();
@@ -79,18 +80,16 @@ export function MorningBriefing() {
       .slice(0, 5);
   }, [quotes, inventory]);
 
-  /** Capital livre: caixa Revolut + valor do inventário ainda não anunciado. */
+  /** Capital livre: caixa Revolut + valor do inventário (preços de mercado). */
   const inventoryEur = useMemo(
     () =>
-      inventory.reduce(
-        (sum, it) =>
-          sum +
-          lineValue({ id: it.id, petId: it.petId, variant: it.variant, qty: it.qty })
-            .usd *
-            FX.EUR,
-        0,
-      ),
-    [inventory],
+      inventory.reduce((sum, it) => {
+        const pet = getPet(it.petId);
+        const variant = pet?.hasVariants ? it.variant : "regular";
+        const { usd } = resolveMarketUsd(it.petId, variant, marketData);
+        return sum + usd * it.qty * FX.EUR;
+      }, 0),
+    [inventory, marketData],
   );
 
   const toCollect = useMemo(
