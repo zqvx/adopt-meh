@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { getPet } from "./pets/catalog";
 import type { MarketRange } from "./pets/live";
+import type { Variant } from "./pets/types";
 
 /** Uma linha de preço vinda do values.json (scraper). */
 export interface MarketPetRow {
@@ -124,21 +125,58 @@ export function marketRanges(data: MarketData | null): Record<string, MarketRang
   return out;
 }
 
-/** Preço de mercado FR (ou variante escalada) para um pet. */
-export function marketPriceFor(
-  petId: string,
-  data: MarketData | null,
-  variant: "fr" | "nfr" | "mfr" | "regular" = "fr",
-): number | null {
-  if (!data?.pets?.[petId]) return null;
-  const row = data.pets[petId];
-  if (variant === "nfr" && typeof row.nfrUsd === "number") return row.nfrUsd;
-  if (variant === "mfr" && typeof row.mfrUsd === "number") return row.mfrUsd;
+function frAnchor(row: MarketPetRow): number | null {
   if (typeof row.frUsd === "number" && row.frUsd > 0) return row.frUsd;
   if (typeof row.storeUsd === "number" && row.storeUsd > 0) {
     return Math.round(row.storeUsd * 0.56 * 100) / 100;
   }
   return null;
+}
+
+/** Preço de mercado (USD) para um pet + variante. Escala NFR/MFR a partir do FR se faltar. */
+export function marketPriceFor(
+  petId: string,
+  data: MarketData | null,
+  variant: Variant = "fr",
+): number | null {
+  if (!data?.pets?.[petId]) return null;
+  const row = data.pets[petId];
+
+  if (variant === "nfr" && typeof row.nfrUsd === "number" && row.nfrUsd > 0) {
+    return row.nfrUsd;
+  }
+  if (variant === "mfr" && typeof row.mfrUsd === "number" && row.mfrUsd > 0) {
+    return row.mfrUsd;
+  }
+
+  const fr = frAnchor(row);
+  if (fr == null) return null;
+  if (variant === "fr" || variant === "regular") return fr;
+
+  // Escala a partir do rácio do catálogo quando só temos FR de mercado
+  const pet = getPet(petId);
+  const catalogFr = pet?.values?.fr?.usd ?? 0;
+  const catalogVar = pet?.values?.[variant]?.usd ?? 0;
+  if (catalogFr > 0 && catalogVar > 0) {
+    return Math.round((catalogVar / catalogFr) * fr * 100) / 100;
+  }
+  return fr;
+}
+
+/**
+ * Resolve USD de mercado com fallback ao catálogo.
+ * Preferência: scrape → catálogo.
+ */
+export function resolveMarketUsd(
+  petId: string,
+  variant: Variant,
+  data: MarketData | null,
+): { usd: number; fromMarket: boolean } {
+  const market = marketPriceFor(petId, data, variant);
+  if (market != null && market > 0) return { usd: market, fromMarket: true };
+  const pet = getPet(petId);
+  const catalog = pet?.values?.[pet?.hasVariants ? variant : "regular"]?.usd ?? 0;
+  return { usd: catalog, fromMarket: false };
 }
 
 export function marketBandFor(
