@@ -19,11 +19,6 @@ interface WatchRow {
   bias: number;
 }
 
-/**
- * Watchlist do feed "ao vivo". A bias negativa simula ativos a negociar
- * abaixo do valor de referência (oportunidades de compra); bias positiva
- * simula ativos aquecidos (boa altura para vender).
- */
 const WATCHLIST: WatchRow[] = [
   { petId: "shadow-dragon", variant: "fr", bias: -0.14 },
   { petId: "bat-dragon", variant: "fr", bias: -0.04 },
@@ -46,16 +41,14 @@ const WATCHLIST: WatchRow[] = [
   { petId: "owl", variant: "nfr", bias: 0.08 },
 ];
 
-/** ROIs limiares para os sinais. */
-export const BUY_EDGE = 0.07; // compra: ≥7% de lucro líquido após taxa
+export const BUY_EDGE = 0.07;
 export const WATCH_EDGE = 0.02;
-export const SELL_OVERVAL = 0.05; // vende: preço ≥5% acima da referência
+export const SELL_OVERVAL = 0.05;
 
 export function fairUsd(petId: string, variant: Variant): number {
   return getPet(petId)?.values[variant]?.usd ?? 0;
 }
 
-/** Preço inicial determinístico (serve o SSR sem erro de hidratação). */
 export function initQuotes(overrides: Record<string, number> = {}): LiveQuote[] {
   return WATCHLIST.map((w) => {
     const fair = marketFair(w.petId, w.variant, overrides);
@@ -71,7 +64,6 @@ export function initQuotes(overrides: Record<string, number> = {}): LiveQuote[] 
   });
 }
 
-/** Valor de referência com overrides do scraping (ou catálogo). */
 function marketFair(
   petId: string,
   variant: Variant,
@@ -86,7 +78,6 @@ function marketFair(
   return (catalog / catalogFr) * fr;
 }
 
-/** Avança o feed um tick: random walk com reversão à média do bias. */
 export function tickQuotes(
   quotes: LiveQuote[],
   overrides: Record<string, number> = {},
@@ -109,20 +100,44 @@ export function tickQuotes(
 export type Signal = "buy" | "hold" | "sell";
 
 export interface PriceZones {
-  /** Valor de venda líquido após taxa do marketplace. */
   netSellUsd: number;
-  /** Teto de compra: abaixo deste preço há ≥7% de margem líquida. */
   buyBelowUsd: number;
-  /** Chão de venda: acima deste preço o mercado está sobrevalorizado. */
   sellAboveUsd: number;
+  quickSellUsd: number;
+  fairSellUsd: number;
+  ambitiousSellUsd: number;
 }
 
-export function priceZones(fair: number, feePct: number): PriceZones {
+export interface MarketRange {
+  lowUsd: number;
+  highUsd: number;
+}
+
+export function priceZones(
+  fair: number,
+  feePct: number,
+  range?: MarketRange | null,
+): PriceZones {
   const netSell = fair * (1 - feePct / 100);
+  if (range && range.lowUsd > 0 && range.highUsd >= range.lowUsd) {
+    const quick = range.lowUsd;
+    const ambitious = range.highUsd;
+    return {
+      netSellUsd: netSell,
+      buyBelowUsd: Math.min(netSell / (1 + BUY_EDGE), quick * 1.02),
+      sellAboveUsd: ambitious * 0.92,
+      quickSellUsd: quick,
+      fairSellUsd: fair,
+      ambitiousSellUsd: ambitious,
+    };
+  }
   return {
     netSellUsd: netSell,
     buyBelowUsd: netSell / (1 + BUY_EDGE),
     sellAboveUsd: fair * (1 + SELL_OVERVAL),
+    quickSellUsd: fair * 0.85,
+    fairSellUsd: fair,
+    ambitiousSellUsd: fair * 1.15,
   };
 }
 
@@ -130,16 +145,11 @@ export interface QuoteSignal {
   quote: LiveQuote;
   fairUsd: number;
   zones: PriceZones;
-  /** ROI líquido projetado para quem compra agora: (venda líq. − compra) / compra. */
   edge: number;
-  /** Sobrevalorização face à referência (>0 = caro para comprar). */
   overval: number;
-  /** Desconto face ao valor de referência. */
   discount: number;
-  /** Variação desde o início da sessão. */
   session: number;
   signal: Signal;
-  /** Score de oportunidade (liquidez × procura × margem). */
   score: number;
 }
 
@@ -154,12 +164,15 @@ export function analyzeQuote(
   quote: LiveQuote,
   feePct: number,
   overrides: Record<string, number> = {},
+  ranges: Record<string, MarketRange> = {},
 ): QuoteSignal | null {
   const pet = getPet(quote.petId);
   if (!pet) return null;
   const fair = marketFair(quote.petId, quote.variant, overrides);
-  const zones = priceZones(fair, feePct);
-  const edge = (zones.netSellUsd - quote.priceUsd) / quote.priceUsd;
+  const range = ranges[quote.petId] ?? null;
+  const zones = priceZones(fair, feePct, range);
+  const realisticNet = zones.fairSellUsd * (1 - feePct / 100);
+  const edge = (realisticNet - quote.priceUsd) / quote.priceUsd;
   const discount = (fair - quote.priceUsd) / fair;
   const overval = (quote.priceUsd - fair) / fair;
   const first = quote.history[0] ?? quote.priceUsd;
@@ -189,7 +202,6 @@ export const SIGNAL_META: Record<
   sell: { label: "VENDER", tone: "warn" },
 };
 
-/** Cotação ao vivo de um pet (ou valor de referência se não estiver no feed). */
 export function livePriceUsd(
   quotes: LiveQuote[],
   petId: string,
